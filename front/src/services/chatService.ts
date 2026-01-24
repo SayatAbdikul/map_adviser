@@ -145,6 +145,7 @@ export const chatService = {
         },
         body: JSON.stringify(requestBody),
       });
+      console.log('response', response);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));

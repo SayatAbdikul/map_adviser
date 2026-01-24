@@ -5,8 +5,8 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 from agents import function_tool
 
-from services.gis_places import GISPlacesClient
-from services.gis_routing import GISRoutingClient
+from services.gis_places import get_places_client
+from services.gis_routing import get_routing_client
 
 
 class RoutePoint(BaseModel):
@@ -28,12 +28,8 @@ async def geocode_address(address: str, city: Optional[str] = None) -> dict:
     Returns:
         Dictionary with name, address, and coordinates [longitude, latitude]
     """
-    client = GISPlacesClient()
-    try:
-        result = await client.geocode(address, city)
-        return result
-    finally:
-        await client.close()
+    client = get_places_client()
+    return await client.geocode(address, city)
 
 
 @function_tool
@@ -57,12 +53,8 @@ async def search_nearby_places(
     Returns:
         List of places with name, address, coordinates, and rating
     """
-    client = GISPlacesClient()
-    try:
-        result = await client.search_places(query, (longitude, latitude), radius, limit)
-        return result
-    finally:
-        await client.close()
+    client = get_places_client()
+    return await client.search_places(query, (longitude, latitude), radius, limit)
 
 
 @function_tool
@@ -82,14 +74,10 @@ async def calculate_route(
     Returns:
         Dictionary with route geometry, total_distance (meters), total_duration (seconds)
     """
-    client = GISRoutingClient()
-    try:
-        # Convert points to tuples
-        point_tuples = [(p.longitude, p.latitude) for p in points]
-        result = await client.get_route(point_tuples, mode, optimize)
-        return result
-    finally:
-        await client.close()
+    client = get_routing_client()
+    # Convert points to tuples
+    point_tuples = [(p.longitude, p.latitude) for p in points]
+    return await client.get_route(point_tuples, mode, optimize)
 
 
 @function_tool
@@ -120,56 +108,51 @@ async def find_optimal_place(
     Returns:
         Dictionary with the best place and list of alternatives
     """
-    places_client = GISPlacesClient()
-    routing_client = GISRoutingClient()
+    places_client = get_places_client()
+    routing_client = get_routing_client()
 
-    try:
-        # Search for places along the route
-        places = await places_client.search_places_along_route(
-            query,
-            (start_longitude, start_latitude),
-            (end_longitude, end_latitude),
-            limit=limit,
-        )
+    # Search for places along the route
+    places = await places_client.search_places_along_route(
+        query,
+        (start_longitude, start_latitude),
+        (end_longitude, end_latitude),
+        limit=limit,
+    )
 
-        if not places:
-            return {"error": f"No {query} found along the route"}
+    if not places:
+        return {"error": f"No {query} found along the route"}
 
-        # Calculate detour for each place
-        start = (start_longitude, start_latitude)
-        end = (end_longitude, end_latitude)
+    # Calculate detour for each place
+    start = (start_longitude, start_latitude)
+    end = (end_longitude, end_latitude)
 
-        places_with_detour = []
-        for place in places:
-            coords = place["coordinates"]
-            if coords[0] is None or coords[1] is None:
-                continue
+    places_with_detour = []
+    for place in places:
+        coords = place["coordinates"]
+        if coords[0] is None or coords[1] is None:
+            continue
 
-            via = (coords[0], coords[1])
-            detour = await routing_client.calculate_detour(start, end, via, mode)
+        via = (coords[0], coords[1])
+        detour = await routing_client.calculate_detour(start, end, via, mode)
 
-            if "error" not in detour:
-                places_with_detour.append({
-                    **place,
-                    "extra_distance": detour["extra_distance"],
-                    "extra_duration": detour["extra_duration"],
-                })
+        if "error" not in detour:
+            places_with_detour.append({
+                **place,
+                "extra_distance": detour["extra_distance"],
+                "extra_duration": detour["extra_duration"],
+            })
 
-        if not places_with_detour:
-            # Return first place without detour calculation
-            return {
-                "best": places[0],
-                "alternatives": places[1:] if len(places) > 1 else [],
-            }
-
-        # Sort by extra duration (or distance)
-        places_with_detour.sort(key=lambda p: p["extra_duration"])
-
+    if not places_with_detour:
+        # Return first place without detour calculation
         return {
-            "best": places_with_detour[0],
-            "alternatives": places_with_detour[1:],
+            "best": places[0],
+            "alternatives": places[1:] if len(places) > 1 else [],
         }
 
-    finally:
-        await places_client.close()
-        await routing_client.close()
+    # Sort by extra duration (or distance)
+    places_with_detour.sort(key=lambda p: p["extra_duration"])
+
+    return {
+        "best": places_with_detour[0],
+        "alternatives": places_with_detour[1:],
+    }

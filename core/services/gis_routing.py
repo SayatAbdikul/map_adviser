@@ -7,10 +7,33 @@ import httpx
 
 ROUTING_URL = "https://routing.api.2gis.com/routing/7.0.0/global"
 
+# Singleton instance for connection reuse
+_routing_client_instance: Optional["GISRoutingClient"] = None
+
 
 def get_api_key() -> str:
     """Get API key lazily to ensure .env is loaded first."""
     return os.getenv("GIS_API_KEY", "")
+
+
+def get_routing_client() -> "GISRoutingClient":
+    """Get or create the singleton GISRoutingClient instance.
+    
+    This reuses the same HTTP client across calls to avoid
+    connection setup overhead.
+    """
+    global _routing_client_instance
+    if _routing_client_instance is None:
+        _routing_client_instance = GISRoutingClient()
+    return _routing_client_instance
+
+
+async def close_routing_client() -> None:
+    """Close the singleton client. Call on application shutdown."""
+    global _routing_client_instance
+    if _routing_client_instance is not None:
+        await _routing_client_instance.close()
+        _routing_client_instance = None
 
 
 class GISRoutingClient:
@@ -156,15 +179,12 @@ class GISRoutingClient:
         }
 
 
-# Convenience function for one-off operations
+# Convenience function using shared client
 async def calculate_route(
     points: list[tuple[float, float]],
     mode: Literal["driving", "walking"] = "driving",
     optimize: Literal["distance", "time"] = "time",
 ) -> dict:
     """Calculate route between points."""
-    client = GISRoutingClient()
-    try:
-        return await client.get_route(points, mode, optimize)
-    finally:
-        await client.close()
+    client = get_routing_client()
+    return await client.get_route(points, mode, optimize)

@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent.path_agent import plan_route
 from models.schemas import ErrorResponse, RouteRequest, RouteResponse
+from services.gis_places import close_places_client
+from services.gis_routing import close_routing_client
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +25,9 @@ async def lifespan(app: FastAPI):
     if not os.getenv("GIS_API_KEY"):
         raise RuntimeError("GIS_API_KEY environment variable is required")
     yield
+    # Cleanup: close shared HTTP clients on shutdown
+    await close_places_client()
+    await close_routing_client()
 
 
 app = FastAPI(

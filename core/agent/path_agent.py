@@ -11,8 +11,8 @@ import litellm
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from services.gis_places import GISPlacesClient
-from services.gis_routing import GISRoutingClient
+from services.gis_places import get_places_client
+from services.gis_routing import get_routing_client
 
 # Configure LiteLLM
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash")
@@ -251,8 +251,8 @@ TOOLS = [
 async def execute_tool(name: str, arguments: dict) -> dict:
     """Execute a tool and return the result."""
     logger.info(f"Executing tool: {name} with args: {arguments}")
-    places_client = GISPlacesClient()
-    routing_client = GISRoutingClient()
+    places_client = get_places_client()
+    routing_client = get_routing_client()
 
     try:
         if name == "geocode_address":
@@ -339,10 +339,6 @@ async def execute_tool(name: str, arguments: dict) -> dict:
     except Exception as e:
         logger.error(f"Tool {name} error: {e}")
         return {"error": str(e)}
-
-    finally:
-        await places_client.close()
-        await routing_client.close()
 
 
 async def plan_route(

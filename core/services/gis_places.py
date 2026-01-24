@@ -8,10 +8,33 @@ import httpx
 BASE_URL = "https://catalog.api.2gis.com/3.0"
 GEOCODE_URL = "https://catalog.api.2gis.com/3.0/items/geocode"
 
+# Singleton instance for connection reuse
+_places_client_instance: Optional["GISPlacesClient"] = None
+
 
 def get_api_key() -> str:
     """Get API key lazily to ensure .env is loaded first."""
     return os.getenv("GIS_API_KEY", "")
+
+
+def get_places_client() -> "GISPlacesClient":
+    """Get or create the singleton GISPlacesClient instance.
+    
+    This reuses the same HTTP client across calls to avoid
+    connection setup overhead.
+    """
+    global _places_client_instance
+    if _places_client_instance is None:
+        _places_client_instance = GISPlacesClient()
+    return _places_client_instance
+
+
+async def close_places_client() -> None:
+    """Close the singleton client. Call on application shutdown."""
+    global _places_client_instance
+    if _places_client_instance is not None:
+        await _places_client_instance.close()
+        _places_client_instance = None
 
 
 class GISPlacesClient:
@@ -150,14 +173,11 @@ class GISPlacesClient:
         return await self.search_places(query, (mid_lon, mid_lat), radius=radius, limit=limit)
 
 
-# Convenience function for one-off operations
+# Convenience functions using shared client
 async def geocode_address(address: str, city: Optional[str] = None) -> dict:
     """Geocode an address to coordinates."""
-    client = GISPlacesClient()
-    try:
-        return await client.geocode(address, city)
-    finally:
-        await client.close()
+    client = get_places_client()
+    return await client.geocode(address, city)
 
 
 async def search_nearby_places(
@@ -167,8 +187,5 @@ async def search_nearby_places(
     limit: int = 5,
 ) -> list[dict]:
     """Search for places near a location."""
-    client = GISPlacesClient()
-    try:
-        return await client.search_places(query, location, radius, limit)
-    finally:
-        await client.close()
+    client = get_places_client()
+    return await client.search_places(query, location, radius, limit)

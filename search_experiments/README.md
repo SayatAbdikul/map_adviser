@@ -12,6 +12,21 @@ This directory contains a comprehensive Python script demonstrating various ways
 pip install requests
 ```
 
+## Configuration
+
+The script requires a 2GIS API key. Set it via environment variable (recommended for security):
+
+```bash
+# Option 1: Export the variable (persists for session)
+export TWOGIS_API_KEY='your_api_key_here'
+python gis_api_demo.py
+
+# Option 2: Inline (for quick testing)
+TWOGIS_API_KEY='your_api_key_here' python gis_api_demo.py
+```
+
+Get your API key from: https://dev.2gis.com/
+
 ## Running the Script
 
 ```bash

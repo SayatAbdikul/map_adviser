@@ -13,6 +13,8 @@ Date: 2026
 import requests
 import json
 import math
+import os
+import time
 from typing import Optional, Dict, Any, List
 from urllib.parse import urlencode
 
@@ -22,8 +24,9 @@ from urllib.parse import urlencode
 # =============================================================================
 
 # API Key for 2GIS Places API
-# Replace with your actual API key for production use
-API_KEY = "ed1537b1-4397-4542-9633-97f7585cb789"
+# Load from environment variable for security; fall back to placeholder for documentation
+# Set your API key: export TWOGIS_API_KEY="your_api_key_here"
+API_KEY = os.environ.get("TWOGIS_API_KEY", "YOUR_API_KEY_HERE")
 
 # Base URLs for the 2GIS Catalog API
 BASE_URL = "https://catalog.api.2gis.com/3.0/items"
@@ -57,18 +60,23 @@ class TwoGISClient:
         self,
         endpoint: str,
         params: Dict[str, Any],
-        description: str
+        description: str,
+        max_retries: int = 3,
+        base_delay: float = 1.0
     ) -> Optional[Dict[str, Any]]:
         """
         Send a request to the 2GIS API and handle the response.
         
         This helper function builds the URL, sends the request, handles errors,
-        and returns the parsed JSON response.
+        and returns the parsed JSON response. Includes retry logic with
+        exponential backoff for transient failures (429, 5xx errors).
         
         Args:
             endpoint: The API endpoint URL.
             params: Dictionary of query parameters.
             description: Human-readable description of what this request does.
+            max_retries: Maximum number of retry attempts for transient errors.
+            base_delay: Base delay in seconds for exponential backoff.
             
         Returns:
             Parsed JSON response as a dictionary, or None if an error occurred.
@@ -86,49 +94,90 @@ class TwoGISClient:
         print(f"🔗 REQUEST URL: {full_url}")
         print("-" * 80)
         
-        try:
-            # Send the GET request
-            response = requests.get(endpoint, params=params, timeout=30)
-            
-            # Check for HTTP errors
-            response.raise_for_status()
-            
-            # Parse JSON response
-            data = response.json()
-            
-            # Check for API-level errors
-            if 'meta' in data and data['meta'].get('code') != 200:
-                error_msg = data['meta'].get('error', {}).get('message', 'Unknown API error')
-                print(f"❌ API ERROR: {error_msg}")
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                # Send the GET request
+                response = requests.get(endpoint, params=params, timeout=30)
+                
+                # Handle rate limiting (429) with retry
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get('Retry-After', base_delay * (2 ** attempt)))
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  RATE LIMITED (429): Retrying in {retry_after}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(retry_after)
+                        continue
+                    else:
+                        print(f"❌ RATE LIMITED (429): Max retries exceeded. Try again later.")
+                        return None
+                
+                # Handle server errors (5xx) with retry
+                if response.status_code >= 500:
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)
+                        print(f"⚠️  SERVER ERROR ({response.status_code}): Retrying in {delay:.1f}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        print(f"❌ SERVER ERROR ({response.status_code}): Max retries exceeded.")
+                        return None
+                
+                # Check for other HTTP errors
+                response.raise_for_status()
+                
+                # Parse JSON response
+                data = response.json()
+                
+                # Check for API-level errors
+                if 'meta' in data and data['meta'].get('code') != 200:
+                    error_msg = data['meta'].get('error', {}).get('message', 'Unknown API error')
+                    print(f"❌ API ERROR: {error_msg}")
+                    return None
+                
+                return data
+                
+            except requests.exceptions.HTTPError as e:
+                print(f"❌ HTTP ERROR: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        error_data = e.response.json()
+                        print(f"   Error details: {json.dumps(error_data, indent=2)}")
+                    except:
+                        print(f"   Response text: {e.response.text[:500]}")
                 return None
-            
-            return data
-            
-        except requests.exceptions.HTTPError as e:
-            print(f"❌ HTTP ERROR: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                try:
-                    error_data = e.response.json()
-                    print(f"   Error details: {json.dumps(error_data, indent=2)}")
-                except:
-                    print(f"   Response text: {e.response.text[:500]}")
-            return None
-            
-        except requests.exceptions.ConnectionError:
-            print("❌ CONNECTION ERROR: Could not connect to the API server.")
-            return None
-            
-        except requests.exceptions.Timeout:
-            print("❌ TIMEOUT ERROR: The request timed out.")
-            return None
-            
-        except requests.exceptions.RequestException as e:
-            print(f"❌ REQUEST ERROR: {e}")
-            return None
-            
-        except json.JSONDecodeError:
-            print("❌ JSON ERROR: Could not parse the API response.")
-            return None
+                
+            except requests.exceptions.ConnectionError as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"⚠️  CONNECTION ERROR: Retrying in {delay:.1f}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                    continue
+                else:
+                    print("❌ CONNECTION ERROR: Could not connect to the API server after multiple attempts.")
+                    return None
+                
+            except requests.exceptions.Timeout as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"⚠️  TIMEOUT: Retrying in {delay:.1f}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                    continue
+                else:
+                    print("❌ TIMEOUT ERROR: The request timed out after multiple attempts.")
+                    return None
+                
+            except requests.exceptions.RequestException as e:
+                print(f"❌ REQUEST ERROR: {e}")
+                return None
+                
+            except json.JSONDecodeError:
+                print("❌ JSON ERROR: Could not parse the API response.")
+                return None
+        
+        return None
     
     def search(
         self,
@@ -353,10 +402,13 @@ def format_item_detailed(item: Dict[str, Any], index: int = 0) -> str:
                 day_data = schedule[day]
                 working_hours = day_data.get('working_hours', [])
                 if working_hours:
-                    hours = working_hours[0]
-                    from_time = hours.get('from', '??')
-                    to_time = hours.get('to', '??')
-                    schedule_info.append(f"{day_names[day]}: {from_time} - {to_time}")
+                    # Handle multiple time ranges per day (split shifts)
+                    time_ranges = []
+                    for hours in working_hours:
+                        from_time = hours.get('from', '??')
+                        to_time = hours.get('to', '??')
+                        time_ranges.append(f"{from_time} - {to_time}")
+                    schedule_info.append(f"{day_names[day]}: {', '.join(time_ranges)}")
         
         if schedule_info:
             is_open = "See schedule below"
@@ -569,24 +621,25 @@ def scenario_e_lookup_by_id(client: TwoGISClient, item_id: Optional[str] = None)
     Scenario E: Lookup by ID
     
     Perform a specific lookup for an object using its 2GIS ID.
-    Uses an ID from a previous search for demonstration.
+    Requires a valid ID from a previous search for reliable results.
     
     Args:
-        item_id: The ID to look up. If None, uses a default sample ID.
+        item_id: The ID to look up. Must be provided from a prior search result.
     """
     print("\n" + "#" * 80)
     print("# SCENARIO E: Lookup by ID")
     print("# Retrieve specific object by its 2GIS ID")
     print("#" * 80)
     
-    # Use the provided ID (from Scenario A) or a sample ID
-    # Using a real ID obtained from search results ensures the lookup works
-    lookup_id = item_id or "70000001006584985"
+    # Require a valid ID from prior search results
+    if not item_id:
+        print("\n⚠️  SKIPPED: No valid item ID available from previous searches.")
+        print("   This scenario requires an ID obtained from a prior search result.")
+        print("   Ensure Scenario A completes successfully to provide an ID.")
+        return
     
-    if item_id:
-        print(f"   (Using ID obtained from Scenario A: {lookup_id})")
-    else:
-        print(f"   (Using sample ID: {lookup_id} - may not exist)")
+    print(f"   (Using ID obtained from Scenario A: {item_id})")
+    lookup_id = item_id
     
     data = client.lookup_by_id(
         item_id=lookup_id,
@@ -625,8 +678,18 @@ def main():
     print("=" * 80)
     
     # Check if API key is set
-    if API_KEY == "YOUR_API_KEY_HERE" or not API_KEY:
-        print("\n❌ ERROR: Please set your API key in the API_KEY variable.")
+    if not API_KEY or API_KEY == "YOUR_API_KEY_HERE":
+        print("\n❌ ERROR: API key not configured.")
+        print("")
+        print("   To set your API key, use one of these methods:")
+        print("")
+        print("   Option 1 - Environment variable (recommended):")
+        print("     export TWOGIS_API_KEY='your_api_key_here'")
+        print("     python gis_api_demo.py")
+        print("")
+        print("   Option 2 - Inline (for quick testing):")
+        print("     TWOGIS_API_KEY='your_api_key_here' python gis_api_demo.py")
+        print("")
         print("   Get your API key from: https://dev.2gis.com/")
         return
     

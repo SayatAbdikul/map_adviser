@@ -1,19 +1,19 @@
 """Agent tools for interacting with 2GIS APIs.
 
-This module re-exports all tools from the agent.tools package for backward compatibility.
-New code should import directly from agent.tools or agent.tools.<module>.
+This package provides function tools for the AI agent to interact with
+2GIS APIs for geocoding, routing, place search, and public transport.
 """
 
-# Re-export all tools from the new package location
-from agent.tools import (
-    geocode_address,
-    search_nearby_places,
-    calculate_route,
-    RoutePoint,
-    find_optimal_place,
+from agent.tools.geocode import geocode_address
+from agent.tools.search_places import search_nearby_places
+from agent.tools.routing import calculate_route, RoutePoint
+from agent.tools.optimal_place import find_optimal_place
+from agent.tools.regions import (
     search_region,
     get_region_from_coordinates,
     validate_location_in_region,
+)
+from agent.tools.public_transport import (
     calculate_public_transport_route,
     IntermediatePoint,
 )

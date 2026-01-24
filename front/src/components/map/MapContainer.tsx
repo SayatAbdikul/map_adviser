@@ -1,87 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { load } from '@2gis/mapgl';
-import { Map as MapGL, Polyline } from '@2gis/mapgl/types';
+import { Map as MapGL, Polyline, Marker } from '@2gis/mapgl/types';
 import { useMapStore } from '@/store/useMapStore';
+import { useRouteStore } from '@/store/useRouteStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
 
 const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
-const API_BASE_URL = 'http://localhost:8000/api';
-
-const ROUTE_POINTS = [
-  { lat: 55.76032056329073, lon: 37.60305783309946 },
-  { lat: 55.76235858700707, lon: 37.61890514654442 },
-  { lat: 55.767992, lon: 37.61364 },
-  { lat: 55.758825, lon: 37.620053 },
-  { lat: 55.75484477885921, lon: 37.59803940836207 },
-];
-
-const parseLineString = (wkt: string): [number, number][] => {
-  const match = wkt.match(/LINESTRING\((.*)\)/);
-  if (!match) return [];
-
-  return match[1]
-    .split(',')
-    .map(pair => {
-      const [lon, lat] = pair.trim().split(/\s+/).map(Number);
-      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
-      return [lon, lat] as [number, number];
-    })
-    .filter((point): point is [number, number] => point !== null);
-};
-
-const SEGMENT_COLORS: Record<string, string> = {
-  fast: '#16a34a',
-  normal: '#2563eb',
-  slow: '#dc2626',
-  ignore: '#9ca3af',
-};
-
-type RouteSegment = {
-  coords: [number, number][];
-  color: string;
-};
-
-type RouteGeometrySegment = {
-  selection: string;
-  color?: string;
-};
-
-type RouteManeuver = {
-  outcoming_path?: {
-    geometry?: RouteGeometrySegment[];
-  };
-};
-
-type RoutingApiResponse = {
-  result?: Array<{
-    maneuvers?: RouteManeuver[];
-  }>;
-};
-
-const extractRouteSegments = (data: RoutingApiResponse): RouteSegment[] => {
-  const maneuvers = data.result?.[0]?.maneuvers ?? [];
-
-  return maneuvers
-    .flatMap(maneuver =>
-      (maneuver.outcoming_path?.geometry ?? []).map(segment => {
-      const coords = parseLineString(segment.selection);
-      const color = SEGMENT_COLORS[segment.color!] ?? '#2563eb';
-      return { coords, color };
-      })
-    )
-    .filter(segment => segment.coords.length > 0);
-};
 
 export const MapContainer: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapGL | null>(null);
   const mapglRef = useRef<Awaited<ReturnType<typeof load>> | null>(null);
   const routeRefs = useRef<Polyline[]>([]);
+  const markerRefs = useRef<Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
-  const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
   const { setMapInstance, setCenter, setZoom, centeryb, zoom } = useMapStore();
+  const { routeResponse, selectedRouteIndex } = useRouteStore();
 
+  // Initialize map
   useEffect(() => {
     let isMounted = true;
 
@@ -118,6 +55,10 @@ export const MapContainer: React.FC = () => {
         routeRefs.current.forEach(route => route.destroy());
         routeRefs.current = [];
       }
+      if (markerRefs.current.length > 0) {
+        markerRefs.current.forEach(marker => marker.destroy());
+        markerRefs.current = [];
+      }
       if (mapRef.current) {
         mapRef.current.destroy();
         mapRef.current = null;
@@ -126,47 +67,102 @@ export const MapContainer: React.FC = () => {
     };
   }, []);
 
+  // Render route when routeResponse changes
   useEffect(() => {
-    const controller = new AbortController();
+    if (!mapReady || !mapRef.current || !mapglRef.current) return;
 
-    const fetchRoute = async () => {
-      const params = new URLSearchParams();
-      ROUTE_POINTS.forEach(point => {
-        params.append('points', `${point.lat},${point.lon}`);
-      });
-      params.append('mode', 'car');
-
-      const response = await fetch(`${API_BASE_URL}/directions?${params.toString()}`, {
-        signal: controller.signal,
-      });
-
-      if (!response.ok) return;
-      const data = (await response.json()) as RoutingApiResponse;
-      const segments = extractRouteSegments(data);
-      setRouteSegments(segments);
-    };
-
-    fetchRoute();
-
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (!mapReady || !mapRef.current || !mapglRef.current || routeSegments.length === 0) return;
-
+    // Clear existing routes and markers
     if (routeRefs.current.length > 0) {
       routeRefs.current.forEach(route => route.destroy());
       routeRefs.current = [];
     }
+    if (markerRefs.current.length > 0) {
+      markerRefs.current.forEach(marker => marker.destroy());
+      markerRefs.current = [];
+    }
 
-    routeRefs.current = routeSegments.map(segment => {
-      return new mapglRef.current!.Polyline(mapRef.current!, {
-        coordinates: segment.coords,
+    // Check if we have route data
+    if (!routeResponse?.routes?.length) return;
+
+    const selectedRoute = routeResponse.routes[selectedRouteIndex] || routeResponse.routes[0];
+    if (!selectedRoute) return;
+
+    // Draw route geometry if available
+    if (selectedRoute.route_geometry && selectedRoute.route_geometry.length > 1) {
+      const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
+        coordinates: selectedRoute.route_geometry,
         width: 6,
-        color: segment.color,
+        color: '#2563eb',
       });
-    });
-  }, [mapReady, routeSegments]);
+      routeRefs.current.push(polyline);
+    }
+
+    // Add waypoint markers
+    if (selectedRoute.waypoints && selectedRoute.waypoints.length > 0) {
+      const waypoints = selectedRoute.waypoints;
+      
+      waypoints.forEach((waypoint, index) => {
+        const isStart = waypoint.type === 'start';
+        const isEnd = waypoint.type === 'end';
+        
+        // Get coordinates from location object
+        const lon = waypoint.location?.lon ?? waypoint.lon;
+        const lat = waypoint.location?.lat ?? waypoint.lat;
+        
+        if (lon === undefined || lat === undefined) return;
+        
+        const marker = new mapglRef.current!.Marker(mapRef.current!, {
+          coordinates: [lon, lat],
+          label: {
+            text: isStart ? 'А' : isEnd ? 'Б' : `${index + 1}`,
+            offset: [0, -45],
+            fontSize: 14,
+            color: '#ffffff',
+          },
+        });
+        markerRefs.current.push(marker);
+      });
+
+      // Fit map to show all waypoints
+      if (waypoints.length >= 2) {
+        const coords = waypoints
+          .map(w => {
+            const lon = w.location?.lon ?? w.lon;
+            const lat = w.location?.lat ?? w.lat;
+            return lon !== undefined && lat !== undefined ? { lon, lat } : null;
+          })
+          .filter((c): c is { lon: number; lat: number } => c !== null);
+        
+        if (coords.length >= 2) {
+          const lons = coords.map(c => c.lon);
+          const lats = coords.map(c => c.lat);
+          const minLon = Math.min(...lons);
+          const maxLon = Math.max(...lons);
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          
+          const centerLon = (minLon + maxLon) / 2;
+          const centerLat = (minLat + maxLat) / 2;
+          
+          mapRef.current.setCenter([centerLon, centerLat]);
+          
+          // Calculate appropriate zoom level
+          const lonDiff = maxLon - minLon;
+          const latDiff = maxLat - minLat;
+          const maxDiff = Math.max(lonDiff, latDiff);
+          
+          let newZoom = 14;
+          if (maxDiff > 0.1) newZoom = 11;
+          else if (maxDiff > 0.05) newZoom = 12;
+          else if (maxDiff > 0.02) newZoom = 13;
+          else if (maxDiff > 0.01) newZoom = 14;
+          else newZoom = 15;
+          
+          mapRef.current.setZoom(newZoom);
+        }
+      }
+    }
+  }, [mapReady, routeResponse, selectedRouteIndex]);
 
   return (
     <div className="relative w-full h-full bg-gray-200">

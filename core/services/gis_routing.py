@@ -68,7 +68,7 @@ class GISRoutingClient:
             return {"error": "At least 2 points are required"}
 
         # Convert mode to 2GIS type
-        transport_type = "car" if mode == "driving" else "pedestrian"
+        transport_type = mode
 
         # Convert optimize to 2GIS route_mode
         route_mode = "shortest" if optimize == "distance" else "fastest"
@@ -80,7 +80,7 @@ class GISRoutingClient:
 
         payload = {
             "points": waypoints,
-            "type": transport_type,
+            "transport": transport_type,
             "route_mode": route_mode,
         }
 

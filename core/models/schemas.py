@@ -17,10 +17,6 @@ class RouteRequest(BaseModel):
         default="driving",
         description="Transportation mode",
     )
-    optimize: Literal["distance", "time"] = Field(
-        default="time",
-        description="Optimization criteria",
-    )
 
 
 class Location(BaseModel):

@@ -64,12 +64,14 @@ async def create_route(request: RouteRequest):
     """
     Plan an optimal route based on natural language request.
 
+    The LLM will automatically decide whether to optimize for time or distance
+    based on the user's query context.
+
     Example request:
     ```json
     {
         "query": "Go from Red Square to a bank, then to a cafe, then to Gorky Park",
-        "mode": "driving",
-        "optimize": "time"
+        "mode": "driving"
     }
     ```
     """
@@ -77,7 +79,6 @@ async def create_route(request: RouteRequest):
         result = await plan_route(
             query=request.query,
             mode=request.mode,
-            optimize=request.optimize,
         )
 
         if "error" in result:

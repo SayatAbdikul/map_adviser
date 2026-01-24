@@ -70,6 +70,9 @@ class GISRoutingClient:
         # Convert mode to 2GIS type
         transport_type = "car" if mode == "driving" else "pedestrian"
 
+        # Convert optimize to 2GIS route_mode
+        route_mode = "shortest" if optimize == "distance" else "fastest"
+
         # Build waypoints for the request
         waypoints = [{"lon": lon, "lat": lat} for lon, lat in points]
 
@@ -78,6 +81,7 @@ class GISRoutingClient:
         payload = {
             "points": waypoints,
             "type": transport_type,
+            "route_mode": route_mode,
         }
 
         response = await self.client.post(

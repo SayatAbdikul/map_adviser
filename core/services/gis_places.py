@@ -48,16 +48,27 @@ class GISPlacesClient:
         """Close the HTTP client."""
         await self.client.aclose()
 
-    async def geocode(self, address: str, city: Optional[str] = None) -> dict:
+    async def geocode(
+        self,
+        address: str,
+        city: Optional[str] = None,
+        region_id: Optional[int] = None,
+        validate_region: bool = True,
+    ) -> dict:
         """
         Convert address string to coordinates.
 
         Args:
             address: Address string to geocode
             city: Optional city name to narrow search
+            region_id: Optional region ID to limit search to a specific region
+            validate_region: Whether to validate that result is in the specified region
 
         Returns:
-            Dict with name, address, coordinates (lon, lat)
+            Dict with name, address, coordinates (lon, lat).
+            If region_id is provided and result is outside region, includes:
+            - region_warning: Warning message
+            - actual_region: The region the result is actually in
         """
         params = {
             "key": self.api_key,
@@ -69,60 +80,159 @@ class GISPlacesClient:
         if city:
             params["q"] = f"{city}, {address}"
 
+        if region_id:
+            params["region_id"] = region_id
+
         response = await self.client.get(f"{BASE_URL}/items", params=params)
         response.raise_for_status()
         data = response.json()
 
         if not data.get("result", {}).get("items"):
+            if region_id:
+                # Try searching without region_id to see if address exists elsewhere
+                params_no_region = {k: v for k, v in params.items() if k != "region_id"}
+                response_no_region = await self.client.get(f"{BASE_URL}/items", params=params_no_region)
+                data_no_region = response_no_region.json()
+
+                if data_no_region.get("result", {}).get("items"):
+                    # Address exists but not in the specified region
+                    from services.gis_regions import get_regions_client
+                    regions_client = get_regions_client()
+
+                    item = data_no_region["result"]["items"][0]
+                    point = item.get("point", {})
+                    lon, lat = point.get("lon"), point.get("lat")
+
+                    if lon and lat:
+                        actual_region = await regions_client.search_by_coordinates(lon, lat)
+                        expected_region = await regions_client.get_by_id(str(region_id))
+                        expected_name = expected_region.get("name") if expected_region else f"region {region_id}"
+                        actual_name = actual_region.get("name") if actual_region else "unknown region"
+
+                        return {
+                            "error": f"Address '{address}' not found in {expected_name}",
+                            "region_warning": f"This address exists in {actual_name}, not in {expected_name}",
+                            "actual_region": actual_region,
+                            "suggestion": {
+                                "name": item.get("full_name", item.get("name", address)),
+                                "address": item.get("address_name", address),
+                                "coordinates": [lon, lat],
+                            }
+                        }
+
             return {"error": f"No results found for address: {address}"}
 
         item = data["result"]["items"][0]
         point = item.get("point", {})
+        lon, lat = point.get("lon"), point.get("lat")
 
-        return {
+        result = {
             "name": item.get("full_name", item.get("name", address)),
             "address": item.get("address_name", address),
-            "coordinates": [point.get("lon"), point.get("lat")],
+            "coordinates": [lon, lat],
         }
+
+        # Validate that result is in the expected region
+        if region_id and validate_region and lon and lat:
+            from services.gis_regions import get_regions_client
+            regions_client = get_regions_client()
+
+            validation = await regions_client.validate_location_in_region(lon, lat, region_id)
+
+            if not validation["is_valid"]:
+                result["region_warning"] = validation["message"]
+                result["actual_region"] = validation["actual_region"]
+
+        return result
 
     async def search_places(
         self,
         query: str,
-        location: tuple[float, float],
+        location: Optional[tuple[float, float]] = None,
         radius: int = 5000,
         limit: int = 5,
-    ) -> list[dict]:
+        region_id: Optional[int] = None,
+        validate_region: bool = True,
+    ) -> dict | list[dict]:
         """
-        Search for places by category/name near a location.
+        Search for places by category/name near a location or within a region.
 
         Args:
             query: Search query (e.g., "bank", "cafe", "pharmacy")
-            location: Tuple of (longitude, latitude)
-            radius: Search radius in meters (default 5000)
+            location: Optional tuple of (longitude, latitude) for location-based search
+            radius: Search radius in meters (default 5000, used with location)
             limit: Maximum number of results (default 5)
+            region_id: Optional region ID to limit search to a specific region
+            validate_region: Whether to validate that results are in the specified region
 
         Returns:
-            List of places with name, address, coordinates, rating
+            List of places with name, address, coordinates, rating.
+            If region_id is provided and no results found, returns dict with error
+            and suggestions from other regions.
         """
-        lon, lat = location
         params = {
             "key": self.api_key,
             "q": query,
-            "point": f"{lon},{lat}",
-            "radius": radius,
             "page_size": limit,
             "fields": "items.point,items.full_name,items.address_name,items.reviews,items.schedule",
             "type": "branch,building,attraction",
-            "sort_point": f"{lon},{lat}",
-            "sort": "distance",
         }
+
+        if location:
+            lon, lat = location
+            params["point"] = f"{lon},{lat}"
+            params["radius"] = radius
+            params["sort_point"] = f"{lon},{lat}"
+            params["sort"] = "distance"
+
+        if region_id:
+            params["region_id"] = region_id
 
         response = await self.client.get(f"{BASE_URL}/items", params=params)
         response.raise_for_status()
         data = response.json()
 
+        items = data.get("result", {}).get("items", [])
+
+        # If no results with region_id, check if they exist elsewhere
+        if not items and region_id:
+            params_no_region = {k: v for k, v in params.items() if k != "region_id"}
+            response_no_region = await self.client.get(f"{BASE_URL}/items", params=params_no_region)
+            data_no_region = response_no_region.json()
+            items_elsewhere = data_no_region.get("result", {}).get("items", [])
+
+            if items_elsewhere:
+                from services.gis_regions import get_regions_client
+                regions_client = get_regions_client()
+
+                expected_region = await regions_client.get_by_id(str(region_id))
+                expected_name = expected_region.get("name") if expected_region else f"region {region_id}"
+
+                # Get regions for first few results
+                suggestions = []
+                for item in items_elsewhere[:3]:
+                    point = item.get("point", {})
+                    lon, lat = point.get("lon"), point.get("lat")
+
+                    if lon and lat:
+                        actual_region = await regions_client.search_by_coordinates(lon, lat)
+                        suggestions.append({
+                            "name": item.get("full_name", item.get("name", query)),
+                            "address": item.get("address_name", ""),
+                            "coordinates": [lon, lat],
+                            "region": actual_region.get("name") if actual_region else "unknown",
+                        })
+
+                return {
+                    "error": f"No '{query}' found in {expected_name}",
+                    "region_warning": f"Results exist in other regions but not in {expected_name}",
+                    "suggestions_outside_region": suggestions,
+                }
+
+            return []
+
         places = []
-        for item in data.get("result", {}).get("items", []):
+        for item in items:
             point = item.get("point", {})
             reviews = item.get("reviews", {})
 

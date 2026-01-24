@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
 from models import PlaceRequest, RouteResponse, Place
 from doublegis_service import DoubleGISService
+<<<<<<< Updated upstream
 from routing_middleware import (
     routing_middleware, 
     RoutingRequest, 
@@ -19,6 +20,12 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
     GeminiService = None
+=======
+from gemini_service import GeminiService
+from database import db
+from chat_service import ChatService
+from auth_models import MessageCreate, MessageResponse, MessageListResponse
+>>>>>>> Stashed changes
 
 app = FastAPI(
     title="AI Route Planner",
@@ -38,6 +45,20 @@ app.add_middleware(
 # Initialize services
 doublegis_service = DoubleGISService()
 gemini_service = GeminiService() if GEMINI_AVAILABLE else None
+
+
+# Database lifecycle events
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection pool on startup"""
+    await db.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection pool on shutdown"""
+    await db.disconnect()
+
 
 
 @app.get("/")
@@ -165,6 +186,73 @@ async def search_places(query: str, city: str = "astana", limit: int = 10):
         return places
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching places: {str(e)}")
+
+
+@app.post("/api/messages", response_model=MessageResponse)
+async def send_message(message_data: MessageCreate):
+    """
+    Send a message (from user or bot).
+    
+    Args:
+        message_data: Message content with role (user/bot) and optional user_id
+        
+    Returns:
+        Created message with ID and timestamp
+        
+    Example:
+        POST /api/messages
+        {
+            "message": "Hello, how can I plan a route?",
+            "role": "user",
+            "user_id": "optional-user-uuid"
+        }
+    """
+    try:
+        saved_message = await ChatService.save_message(message_data)
+        return saved_message
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error saving message: {str(e)}"
+        )
+
+
+@app.get("/api/messages", response_model=MessageListResponse)
+async def get_messages(
+    limit: int = 50,
+    offset: int = 0,
+    user_id: Optional[str] = None
+):
+    """
+    Fetch messages with pagination.
+    
+    Args:
+        limit: Maximum number of messages to return (default: 50, max: 100)
+        offset: Number of messages to skip for pagination (default: 0)
+        user_id: Optional - filter messages by user ID
+        
+    Returns:
+        Paginated list of messages ordered by created_at DESC (most recent first)
+        
+    Example:
+        GET /api/messages?limit=10&offset=0
+        GET /api/messages?user_id=some-uuid&limit=20
+    """
+    try:
+        # Limit maximum to prevent abuse
+        limit = min(limit, 100)
+        
+        messages = await ChatService.get_messages(
+            limit=limit,
+            offset=offset,
+            user_id=user_id
+        )
+        return messages
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching messages: {str(e)}"
+        )
 
 
 @app.get("/health")

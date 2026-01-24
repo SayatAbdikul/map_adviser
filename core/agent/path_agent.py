@@ -13,12 +13,23 @@ logger = logging.getLogger(__name__)
 
 from services.gis_places import get_places_client
 from services.gis_routing import get_routing_client
+from services.gis_regions import get_regions_client
 
 # Configure LiteLLM
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash")
 
 
 SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся на гео-навигации и логистике. Твоя задача — анализировать запрос пользователя, извлекать точки маршрута (адреса и категории мест) и составлять оптимальные маршруты.
+
+ОПРЕДЕЛЕНИЕ РЕГИОНА:
+Если пользователь упоминает конкретный город или регион (например, "Алматы", "Москва", "Астана"), СНАЧАЛА используй инструмент search_region для получения region_id. Затем передавай этот region_id в geocode_address и search_nearby_places для ограничения поиска указанным регионом. Это обеспечит точность результатов.
+
+ОБРАБОТКА ОШИБОК РЕГИОНА:
+Когда результат поиска содержит поле "region_warning" или "error" связанный с регионом:
+1. ОБЯЗАТЕЛЬНО сообщи пользователю, что запрошенный адрес/место находится вне указанного региона
+2. Укажи, в каком регионе фактически находится найденный результат (поле "actual_region" или "suggestions_outside_region")
+3. Спроси пользователя, хочет ли он использовать найденный результат из другого региона или уточнить запрос
+4. НЕ продолжай построение маршрута, если место находится вне указанного пользователем региона - сначала получи подтверждение
 
 ТВОИ ЦЕЛИ:
 1. Проанализировать текст пользователя. Найти точку отправления (Start).
@@ -138,7 +149,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "geocode_address",
-            "description": "Convert an address string to geographic coordinates",
+            "description": "Convert an address string to geographic coordinates. Use region_id (from search_region) to limit search to a specific city/region.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -149,6 +160,10 @@ TOOLS = [
                     "city": {
                         "type": "string",
                         "description": "Optional city name to narrow the search"
+                    },
+                    "region_id": {
+                        "type": "integer",
+                        "description": "Region ID to limit search to a specific city/region (get from search_region tool)"
                     }
                 },
                 "required": ["address"]
@@ -159,7 +174,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_nearby_places",
-            "description": "Search for places by category or name near a specific location",
+            "description": "Search for places by category or name near a specific location or within a region. You can search by location (longitude/latitude) or by region_id (from search_region tool).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -169,22 +184,26 @@ TOOLS = [
                     },
                     "longitude": {
                         "type": "number",
-                        "description": "Longitude of the search center point"
+                        "description": "Longitude of the search center point (optional if region_id provided)"
                     },
                     "latitude": {
                         "type": "number",
-                        "description": "Latitude of the search center point"
+                        "description": "Latitude of the search center point (optional if region_id provided)"
                     },
                     "radius": {
                         "type": "integer",
-                        "description": "Search radius in meters (default 5000)"
+                        "description": "Search radius in meters (default 5000, used with location)"
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results (default 5)"
+                    },
+                    "region_id": {
+                        "type": "integer",
+                        "description": "Region ID to limit search to a specific city/region (get from search_region tool)"
                     }
                 },
-                "required": ["query", "longitude", "latitude"]
+                "required": ["query"]
             }
         }
     },
@@ -252,6 +271,73 @@ TOOLS = [
                 "required": ["query", "start_longitude", "start_latitude", "end_longitude", "end_latitude"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_region",
+            "description": "Search for geographic regions by name to get region IDs. Use this when a user mentions a city or region name to find the correct region ID for limiting subsequent searches.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "City or region name (e.g., 'Almaty', 'Moscow', 'Dubai')"
+                    },
+                    "include_bounds": {
+                        "type": "boolean",
+                        "description": "Whether to include the geographic bounding box"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_region_from_coordinates",
+            "description": "Find which region contains the given coordinates. Use this to determine the region for a specific location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "longitude": {
+                        "type": "number",
+                        "description": "Longitude of the point"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "description": "Latitude of the point"
+                    }
+                },
+                "required": ["longitude", "latitude"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "validate_location_in_region",
+            "description": "Check if coordinates are within a specific region. Use this to validate that a destination is within the user's specified region before building a route.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "longitude": {
+                        "type": "number",
+                        "description": "Longitude of the point to validate"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "description": "Latitude of the point to validate"
+                    },
+                    "region_id": {
+                        "type": "integer",
+                        "description": "The region ID to validate against (from search_region tool)"
+                    }
+                },
+                "required": ["longitude", "latitude", "region_id"]
+            }
+        }
     }
 ]
 
@@ -261,22 +347,28 @@ async def execute_tool(name: str, arguments: dict) -> dict:
     logger.info(f"Executing tool: {name} with args: {arguments}")
     places_client = get_places_client()
     routing_client = get_routing_client()
+    regions_client = get_regions_client()
 
     try:
         if name == "geocode_address":
             result = await places_client.geocode(
                 arguments["address"],
-                arguments.get("city")
+                arguments.get("city"),
+                arguments.get("region_id")
             )
             logger.info(f"geocode_address result: {result}")
             return result
 
         elif name == "search_nearby_places":
+            location = None
+            if "longitude" in arguments and "latitude" in arguments:
+                location = (arguments["longitude"], arguments["latitude"])
             result = await places_client.search_places(
                 arguments["query"],
-                (arguments["longitude"], arguments["latitude"]),
+                location,
                 arguments.get("radius", 5000),
-                arguments.get("limit", 5)
+                arguments.get("limit", 5),
+                arguments.get("region_id")
             )
             logger.info(f"search_nearby_places result: {result}")
             return result
@@ -337,6 +429,33 @@ async def execute_tool(name: str, arguments: dict) -> dict:
                 "alternatives": places_with_detour[1:],
             }
             logger.info(f"find_optimal_place result: {result}")
+            return result
+
+        elif name == "search_region":
+            result = await regions_client.search_by_name(
+                arguments["query"],
+                include_bounds=arguments.get("include_bounds", False)
+            )
+            logger.info(f"search_region result: {result}")
+            return result
+
+        elif name == "get_region_from_coordinates":
+            result = await regions_client.search_by_coordinates(
+                arguments["longitude"],
+                arguments["latitude"]
+            )
+            if result is None:
+                result = {"error": f"No region found for coordinates ({arguments['longitude']}, {arguments['latitude']})"}
+            logger.info(f"get_region_from_coordinates result: {result}")
+            return result
+
+        elif name == "validate_location_in_region":
+            result = await regions_client.validate_location_in_region(
+                arguments["longitude"],
+                arguments["latitude"],
+                arguments["region_id"]
+            )
+            logger.info(f"validate_location_in_region result: {result}")
             return result
 
         else:

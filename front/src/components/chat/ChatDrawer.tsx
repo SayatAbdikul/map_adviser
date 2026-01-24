@@ -1,43 +1,116 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { useChatStore } from '@/store/useChatStore';
-import { Minus } from 'lucide-react';
+import { ChevronUp, Minus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 
 export const ChatDrawer: React.FC = () => {
-  const { isOpen, toggleChat } = useChatStore();
+  const { isOpen, setIsOpen, toggleChat } = useChatStore();
+  const [sheetSize, setSheetSize] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const touchStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSheetSize('collapsed');
+      return;
+    }
+
+    if (sheetSize === 'collapsed') {
+      setSheetSize('half');
+    }
+  }, [isOpen, sheetSize]);
+
+  const handleTouchStart = (event: React.TouchEvent) => {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
+    const delta = endY - touchStartY.current;
+
+    if (delta < -60) {
+      setIsOpen(true);
+      setSheetSize(sheetSize === 'half' ? 'full' : 'half');
+    } else if (delta > 60) {
+      if (sheetSize === 'full') {
+        setSheetSize('half');
+      } else {
+        setIsOpen(false);
+      }
+    }
+
+    touchStartY.current = null;
+  };
+
+  const sheetHeight =
+    sheetSize === 'collapsed' ? '72px' : sheetSize === 'half' ? '50vh' : '92vh';
   
   return (
     <div
       className={twMerge(
-        'fixed bottom-0 right-0 z-40 w-full sm:w-96 bg-white shadow-2xl transition-transform duration-300 ease-in-out transform rounded-t-xl sm:rounded-tl-xl sm:rounded-bl-none sm:right-4',
-        isOpen ? 'translate-y-0' : 'translate-y-full'
+        'fixed bottom-0 left-0 z-40 w-full bg-white shadow-2xl transition-all duration-300 ease-in-out rounded-t-2xl'
       )}
-      style={{ height: '500px', maxHeight: '80vh' }}
+      style={{ height: sheetHeight }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div 
-            className="flex items-center justify-between p-3 border-b border-gray-100 bg-blue-600 text-white rounded-t-xl cursor-pointer"
-            onClick={toggleChat}
+        <div
+          className="flex items-center justify-center py-2 cursor-pointer"
+          onClick={() => setIsOpen(!isOpen)}
         >
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold">Map Assistant</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); toggleChat(); }} className="text-white hover:bg-blue-700 h-8 w-8 p-0">
-               <Minus size={20} />
-            </Button>
-          </div>
+          <div className="h-1.5 w-14 rounded-full bg-gray-300" />
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
-           <MessageList />
-           <ChatInput />
-        </div>
+        {isOpen ? (
+          <>
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-blue-600 text-white rounded-t-2xl"
+              onClick={toggleChat}
+            >
+              <div className="flex items-center space-x-2">
+                <MessageSquare size={18} />
+                <span className="font-semibold">Map Assistant</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (sheetSize === 'full') {
+                      setSheetSize('half');
+                      return;
+                    }
+                    toggleChat();
+                  }}
+                  className="text-white hover:bg-blue-700 h-8 w-8 p-0"
+                >
+                  <Minus size={20} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
+              <MessageList />
+              <ChatInput />
+            </div>
+          </>
+        ) : (
+          <div className="px-4 pb-4">
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 px-4 py-3 text-left text-gray-600 shadow-sm"
+            >
+              <span className="text-sm">Ask about a route or place...</span>
+              <ChevronUp size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

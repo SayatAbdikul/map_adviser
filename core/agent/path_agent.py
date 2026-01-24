@@ -37,7 +37,22 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
 3. Найти конечную точку (End). Если пользователь говорит "домой" или "обратно", конечная точка совпадает с начальной. Если конечная точка не указана, предложи логическое завершение или оставь маршрут открытым.
 4. Сгенерировать ровно 3 варианта маршрута. Варианты должны отличаться выбором конкретных заведений (например, "Ближайший банк А" vs "Банк Б чуть дальше, но с лучшим рейтингом") или порядком посещения, чтобы предложить пользователю выбор.
 
-ВЫБОР ОПТИМИЗАЦИИ МАРШРУТА:
+ВЫБОР СПОСОБА ПЕРЕДВИЖЕНИЯ:
+Определи способ передвижения на основе переданного параметра mode или контекста запроса:
+- "driving" (на машине) — по умолчанию. Используй calculate_route с mode="driving"
+- "walking" (пешком) — если указано "пешком", "прогулка". Используй calculate_route с mode="walking"
+- "public_transport" (общественный транспорт) — если указано "автобус", "метро", "трамвай", "троллейбус", "электричка", "общественный транспорт", "bus", "metro", "tram". Используй calculate_public_transport_route
+
+ОБЩЕСТВЕННЫЙ ТРАНСПОРТ (mode = "public_transport"):
+Когда пользователь хочет ехать на общественном транспорте:
+1. Используй инструмент calculate_public_transport_route ВМЕСТО calculate_route
+2. Доступные виды транспорта (transport_types): "metro", "bus", "trolleybus", "tram", "shuttle_bus", "suburban_train", "funicular", "monorail", "river_transport"
+3. По умолчанию используются: ["metro", "bus", "trolleybus", "tram"]
+4. Если пользователь хочет только метро — передай transport_types=["metro"]
+5. Результат содержит: transport_chain (цепочка маршрута, например "Walk → Metro → Bus → Walk"), transfer_count (пересадки), walking_duration_seconds
+6. Для маршрутов через промежуточные точки используй intermediate_points
+
+ВЫБОР ОПТИМИЗАЦИИ МАРШРУТА (для driving/walking):
 Ты ДОЛЖЕН сам решить, как оптимизировать маршрут на основе контекста запроса:
 - Используй optimize="time" (по времени) если пользователь торопится, спешит, упоминает "быстро", "срочно", "скорее", или это деловая поездка.
 - Используй optimize="distance" (по расстоянию) если пользователь хочет сэкономить топливо, упоминает "короче", "ближе", "экономно", прогулка, или нет явной спешки.
@@ -52,14 +67,18 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
   "request_summary": {
     "origin_address": "Строка, адрес старта",
     "intent": "Краткое описание намерения пользователя",
-    "optimization_choice": "time или distance — что ты выбрал и почему (кратко)"
+    "transport_mode": "driving | walking | public_transport",
+    "optimization_choice": "time или distance (только для driving/walking)"
   },
   "routes": [
     {
       "route_id": 1,
-      "title": "Название варианта (например: 'Самый быстрый' или 'Через Halyk Bank')",
-      "total_distance_meters": Число (примерная оценка),
-      "total_duration_minutes": Число (примерная оценка),
+      "title": "Название варианта (например: 'Самый быстрый' или 'Через метро')",
+      "total_distance_meters": Число,
+      "total_duration_minutes": Число,
+      "transport_chain": "Walk → Metro → Bus → Walk" (только для public_transport),
+      "transfer_count": Число пересадок (только для public_transport),
+      "walking_duration_minutes": Число минут ходьбы (только для public_transport),
       "waypoints": [
         {
           "order": 1,
@@ -72,7 +91,7 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
         {
           "order": 2,
           "type": "stop",
-          "name": "Название конкретного найденного места (например, Starbucks)",
+          "name": "Название конкретного найденного места",
           "address": "Адрес этого места",
           "location": { "lat": 0.000000, "lon": 0.000000 },
           "category": "cafe" (категория из запроса)
@@ -338,6 +357,65 @@ TOOLS = [
                 "required": ["longitude", "latitude", "region_id"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_public_transport_route",
+            "description": "Calculate a public transport route using buses, metro/subway, trams, trolleybuses, trains, and other public transport modes. Use this when a user wants to travel using public transportation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_longitude": {
+                        "type": "number",
+                        "description": "Longitude of starting point"
+                    },
+                    "start_latitude": {
+                        "type": "number",
+                        "description": "Latitude of starting point"
+                    },
+                    "end_longitude": {
+                        "type": "number",
+                        "description": "Longitude of ending point"
+                    },
+                    "end_latitude": {
+                        "type": "number",
+                        "description": "Latitude of ending point"
+                    },
+                    "start_name": {
+                        "type": "string",
+                        "description": "Human-readable name for starting point (e.g., 'Red Square')"
+                    },
+                    "end_name": {
+                        "type": "string",
+                        "description": "Human-readable name for ending point (e.g., 'Central Station')"
+                    },
+                    "transport_types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Allowed transport types: 'metro', 'bus', 'trolleybus', 'tram', 'shuttle_bus', 'suburban_train', 'funicular', 'monorail', 'river_transport'. Default: ['metro', 'bus', 'trolleybus', 'tram']"
+                    },
+                    "intermediate_points": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "longitude": {"type": "number"},
+                                "latitude": {"type": "number"},
+                                "name": {"type": "string"}
+                            },
+                            "required": ["longitude", "latitude"]
+                        },
+                        "description": "Optional list of waypoints to visit between start and end"
+                    },
+                    "locale": {
+                        "type": "string",
+                        "description": "Language code for response (default: 'en')"
+                    }
+                },
+                "required": ["start_longitude", "start_latitude", "end_longitude", "end_latitude"]
+            }
+        }
     }
 ]
 
@@ -348,6 +426,8 @@ async def execute_tool(name: str, arguments: dict) -> dict:
     places_client = get_places_client()
     routing_client = get_routing_client()
     regions_client = get_regions_client()
+    from services.public_transport import get_public_transport_client
+    public_transport_client = get_public_transport_client()
 
     try:
         if name == "geocode_address":
@@ -458,6 +538,28 @@ async def execute_tool(name: str, arguments: dict) -> dict:
             logger.info(f"validate_location_in_region result: {result}")
             return result
 
+        elif name == "calculate_public_transport_route":
+            # Parse intermediate points if provided
+            intermediate_points = None
+            if "intermediate_points" in arguments and arguments["intermediate_points"]:
+                intermediate_points = [
+                    (pt["longitude"], pt["latitude"], pt.get("name", "Waypoint"))
+                    for pt in arguments["intermediate_points"]
+                ]
+
+            result = await public_transport_client.get_public_transport_route(
+                source_point=(arguments["start_longitude"], arguments["start_latitude"]),
+                target_point=(arguments["end_longitude"], arguments["end_latitude"]),
+                source_name=arguments.get("start_name", "Start Point"),
+                target_name=arguments.get("end_name", "End Point"),
+                intermediate_points=intermediate_points,
+                transport_types=arguments.get("transport_types"),
+                locale=arguments.get("locale", "en"),
+                include_pedestrian_instructions=False,
+            )
+            logger.info(f"calculate_public_transport_route result: {result}")
+            return result
+
         else:
             result = {"error": f"Unknown tool: {name}"}
             logger.info(f"Tool {name} result: {result}")
@@ -470,27 +572,43 @@ async def execute_tool(name: str, arguments: dict) -> dict:
 
 async def plan_route(
     query: str,
-    mode: Literal["driving", "walking"] = "driving",
+    mode: Literal["driving", "walking", "public_transport"] = "driving",
 ) -> dict:
     """
     Plan a route based on natural language query.
 
     Args:
         query: Natural language route request
-        mode: Transportation mode
+        mode: Transportation mode - "driving", "walking", or "public_transport"
 
     Returns:
         Route response dictionary
     """
-    mode_ru = "пешком" if mode == "walking" else "на машине"
+    mode_map = {
+        "driving": "на машине",
+        "walking": "пешком",
+        "public_transport": "на общественном транспорте (автобус, метро, трамвай)"
+    }
+    mode_ru = mode_map.get(mode, "на машине")
+
+    # Build mode-specific instructions
+    if mode == "public_transport":
+        mode_instructions = """Способ передвижения: на общественном транспорте
+
+ВАЖНО: Используй инструмент calculate_public_transport_route для построения маршрута.
+Включи в ответ: transport_chain (цепочку транспорта), transfer_count (пересадки), walking_duration_minutes (время ходьбы)."""
+    else:
+        mode_instructions = f"""Способ передвижения: {mode_ru}
+
+Проанализируй запрос и сам выбери оптимизацию (time или distance) на основе контекста."""
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"""Запрос пользователя: {query}
 
-Способ передвижения: {mode_ru}
+{mode_instructions}
 
-Проанализируй запрос и сам выбери оптимизацию (time или distance) на основе контекста. Используй инструменты для поиска мест и построения маршрутов. Верни результат в формате JSON."""}
+Используй инструменты для поиска мест и построения маршрутов. Верни результат в формате JSON."""}
     ]
 
     # Agentic loop - keep calling until we get a final response

@@ -13,9 +13,9 @@ class RouteRequest(BaseModel):
         description="Natural language route request",
         examples=["Поехать от Назарбаев Университета до банка, потом в кафе, потом в Ботанический парк"],
     )
-    mode: Literal["driving", "walking"] = Field(
+    mode: Literal["driving", "walking", "public_transport"] = Field(
         default="driving",
-        description="Transportation mode",
+        description="Transportation mode: driving (car), walking (pedestrian), or public_transport (bus, metro, tram, etc.)",
     )
 
 
@@ -37,6 +37,29 @@ class Waypoint(BaseModel):
     category: Optional[str] = None
 
 
+class PublicTransportMovement(BaseModel):
+    """A single segment of a public transport journey."""
+
+    type: str  # "walkway", "passage", "transfer"
+    duration_seconds: int
+    distance_meters: int
+    transport_type: Optional[str] = None  # "metro", "bus", "tram", etc.
+    route_name: Optional[str] = None  # e.g., "Line 1", "Bus 42"
+    line_name: Optional[str] = None  # for metro
+    stops_count: Optional[int] = None
+
+
+class PublicTransportRoute(BaseModel):
+    """A public transport route alternative."""
+
+    total_duration_seconds: int
+    total_distance_meters: int
+    walking_duration_seconds: int
+    transfer_count: int
+    transport_chain: str  # e.g., "Walk → Metro → Bus → Walk"
+    movements: list[PublicTransportMovement]
+
+
 class Route(BaseModel):
     """A single route variant."""
 
@@ -45,6 +68,10 @@ class Route(BaseModel):
     total_distance_meters: Optional[float] = None
     total_duration_minutes: Optional[float] = None
     waypoints: list[Waypoint]
+    # Public transport specific fields
+    transport_chain: Optional[str] = None  # e.g., "Walk → Metro → Bus → Walk"
+    transfer_count: Optional[int] = None
+    walking_duration_minutes: Optional[float] = None
 
 
 class RequestSummary(BaseModel):
@@ -52,6 +79,8 @@ class RequestSummary(BaseModel):
 
     origin_address: str
     intent: str
+    transport_mode: Optional[str] = None  # "driving", "walking", "public_transport"
+    optimization_choice: Optional[str] = None  # "time" or "distance"
 
 
 class RouteResponse(BaseModel):

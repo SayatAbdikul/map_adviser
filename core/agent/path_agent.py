@@ -105,17 +105,48 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
           "location": { "lat": 0.000000, "lon": 0.000000 },
           "category": null
         }
+      ],
+      "route_geometry": [[lon1, lat1], [lon2, lat2], ...],
+      "directions": [
+        {
+          "instruction": "Поверните направо на улицу Абая",
+          "type": "turn_right",
+          "street_name": "улица Абая",
+          "distance_meters": 500,
+          "duration_seconds": 60
+        },
+        ...
+      ],
+      "segments": [
+        {
+          "from_waypoint": 0,
+          "to_waypoint": 1,
+          "distance_meters": 1500,
+          "duration_seconds": 300
+        },
+        ...
       ]
     },
     ... (еще 2 варианта)
   ]
 }
 
+ВАЖНО ДЛЯ ПОЛЕЙ МАРШРУТА:
+- route_geometry: Массив координат [lon, lat] - это все точки полилинии маршрута из результата calculate_route. Копируй их полностью из поля "geometry" результата API.
+- directions: Массив пошаговых инструкций из поля "maneuvers" результата API. Каждая инструкция содержит:
+  - instruction: Текст инструкции для водителя/пешехода
+  - type: Тип маневра (turn_left, turn_right, straight, uturn, finish, etc.)
+  - street_name: Название улицы
+  - distance_meters: Расстояние до следующего маневра
+  - duration_seconds: Время до следующего маневра
+- segments: Информация о каждом сегменте маршрута между точками остановки
+
 ПРАВИЛА ГЕНЕРАЦИИ:
 1. Если пользователь дает неточный адрес (например, только улицу), выбери наиболее вероятные координаты или центр улицы.
 2. Для категорий ("аптека", "магазин") подбирай реально существующие или правдоподобные места в радиусе от предыдущей точки.
 3. Координаты (lat, lon) обязательны для каждой точки, чтобы фронтенд мог поставить маркеры.
-4. Поле title должно коротко объяснять, чем этот маршрут отличается (например, "Через центр", "Минимальная ходьба")."""
+4. Поле title должно коротко объяснять, чем этот маршрут отличается (например, "Через центр", "Минимальная ходьба").
+5. Всегда включай route_geometry и directions из результата calculate_route - это критично для отображения маршрута на карте."""
 
 # SYSTEM_PROMPT = """You are a path planning assistant that helps users find optimal routes through multiple locations.
 
@@ -230,7 +261,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "calculate_route",
-            "description": "Calculate a route through multiple points",
+            "description": "Calculate a route through multiple points. Returns: geometry (array of [lon, lat] coordinates for the route polyline), total_distance (meters), total_duration (seconds), segments (distance/duration per leg), maneuvers (turn-by-turn directions with instruction, type, street_name, distance, duration).",
             "parameters": {
                 "type": "object",
                 "properties": {

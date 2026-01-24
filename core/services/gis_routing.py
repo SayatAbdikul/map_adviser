@@ -99,24 +99,70 @@ class GISRoutingClient:
 
         # Extract geometry (list of coordinates for the polyline)
         geometry = []
-        segments = []
+        maneuvers = []
+        
+        def parse_linestring(linestring_wkt: str) -> list:
+            """Parse WKT LINESTRING into list of [lon, lat] coordinates."""
+            coords = []
+            try:
+                # Extract coordinates from LINESTRING(lon lat, lon lat, ...)
+                if linestring_wkt.startswith("LINESTRING("):
+                    content = linestring_wkt[11:-1]  # Remove 'LINESTRING(' and ')'
+                    for pair in content.split(", "):
+                        parts = pair.strip().split(" ")
+                        if len(parts) >= 2:
+                            lon, lat = float(parts[0]), float(parts[1])
+                            coords.append([lon, lat])
+            except (ValueError, IndexError):
+                pass
+            return coords
 
         for i, leg in enumerate(result.get("maneuvers", [])):
+            # Extract maneuver/direction instructions
+            maneuver_info = {
+                "instruction": leg.get("comment", ""),
+                "type": leg.get("type", ""),
+                "distance": leg.get("outcoming_path", {}).get("distance", 0),
+                "duration": leg.get("outcoming_path", {}).get("duration", 0),
+            }
+            
+            # Add street name if available
             if "outcoming_path" in leg:
                 path = leg["outcoming_path"]
+                # Street names are in "names" list
+                names = path.get("names", [])
+                maneuver_info["street_name"] = names[0] if names else ""
+                
                 if "geometry" in path:
-                    # Geometry is encoded - extract coordinates
-                    for point in path["geometry"]:
-                        geometry.append([point["lon"], point["lat"]])
+                    # Geometry is a list of segments with WKT LINESTRING in 'selection' field
+                    for geom_segment in path["geometry"]:
+                        selection = geom_segment.get("selection", "")
+                        if selection:
+                            coords = parse_linestring(selection)
+                            geometry.extend(coords)
+            
+            if maneuver_info["instruction"] or maneuver_info["type"]:
+                maneuvers.append(maneuver_info)
 
         # If maneuvers don't have geometry, try to get from the route directly
         if not geometry and "geometry" in result:
-            for point in result["geometry"]:
-                geometry.append([point["lon"], point["lat"]])
+            for geom_item in result["geometry"]:
+                # Check if it's WKT format
+                if isinstance(geom_item, dict) and "selection" in geom_item:
+                    coords = parse_linestring(geom_item["selection"])
+                    geometry.extend(coords)
+                # Check if it's direct lon/lat format
+                elif isinstance(geom_item, dict):
+                    lon = geom_item.get("lon") or geom_item.get("longitude")
+                    lat = geom_item.get("lat") or geom_item.get("latitude")
+                    if lon is not None and lat is not None:
+                        geometry.append([lon, lat])
 
         # Build segments info
         total_distance = result.get("total_distance", 0)
         total_duration = result.get("total_duration", 0)
+        
+        segments = []
 
         # Calculate per-segment info if available
         if "waypoints" in result:
@@ -140,6 +186,7 @@ class GISRoutingClient:
             "total_distance": total_distance,
             "total_duration": total_duration,
             "segments": segments,
+            "maneuvers": maneuvers,
             "mode": mode,
             "optimize": optimize,
         }

@@ -1,6 +1,0 @@
-# Minimal requirements for 2GIS integration only
-# (Your part - no Gemini needed yet)
-fastapi
-uvicorn
-httpx
-python-dotenv

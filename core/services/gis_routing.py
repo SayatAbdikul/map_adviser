@@ -82,6 +82,7 @@ class GISRoutingClient:
             "points": waypoints,
             "transport": transport_type,
             "route_mode": route_mode,
+            "detailed": True,
         }
 
         response = await self.client.post(

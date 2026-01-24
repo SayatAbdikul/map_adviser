@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from models import PlaceRequest, RouteResponse, Place
 from doublegis_service import DoubleGISService
-from gemini_service import GeminiService
 from routing_middleware import (
     routing_middleware, 
     RoutingRequest, 
@@ -12,6 +11,14 @@ from routing_middleware import (
     TransportMode,
     get_directions
 )
+
+# Optional Gemini service (requires google-generativeai package)
+try:
+    from gemini_service import GeminiService
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    GeminiService = None
 
 app = FastAPI(
     title="AI Route Planner",
@@ -30,7 +37,7 @@ app.add_middleware(
 
 # Initialize services
 doublegis_service = DoubleGISService()
-gemini_service = GeminiService()
+gemini_service = GeminiService() if GEMINI_AVAILABLE else None
 
 
 @app.get("/")
@@ -39,9 +46,13 @@ async def root():
     return {
         "message": "AI Route Planner API",
         "version": "1.0.0",
+        "gemini_available": GEMINI_AVAILABLE,
         "endpoints": {
             "/plan-route": "POST - Plan a route based on natural language description",
-            "/search-places": "POST - Search for places using 2GIS"
+            "/search-places": "POST - Search for places using 2GIS",
+            "/api/directions": "POST - Get directions between two points",
+            "/api/directions/simple": "GET - Simple directions with query params",
+            "/api/compare-routes": "POST - Compare all transport modes"
         }
     }
 
@@ -58,7 +69,15 @@ async def plan_route(request: PlaceRequest):
     4. Gemini selects best places
     5. Build route through selected places
     6. Return route with explanation
+    
+    Note: Requires google-generativeai package to be installed.
     """
+    if not GEMINI_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini AI service not available. Install google-generativeai package."
+        )
+    
     try:
         # Step 1: Parse user request with Gemini
         search_queries = await gemini_service.parse_user_request(

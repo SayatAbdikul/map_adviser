@@ -12,7 +12,7 @@ interface MapState {
 
 export const useMapStore = create<MapState>((set) => ({
   mapInstance: null,
-  centeryb: [55.751244, 37.618423], // Moscow coordinates as default
+  centeryb: [37.60305783309946, 55.760320563290726], // Astana coordinates as default
   zoom: 13,
   setMapInstance: (map) => set({ mapInstance: map }),
   setCenter: (center) => set({ centeryb: center }),

@@ -44,13 +44,13 @@ async def root():
 @app.get("/search", response_model=List[Place])
 async def search_places(
     query: str = Query(..., description="Search query (e.g., 'restaurants', 'museums')"),
-    city: str = Query("moscow", description="City to search in"),
+    city: str = Query("astana", description="City to search in"),
     limit: int = Query(10, description="Maximum number of results", ge=1, le=50)
 ):
     """
     Search for places using 2GIS API
     
-    Example: /search?query=restaurants&city=moscow&limit=5
+    Example: /search?query=restaurants&city=astana&limit=5
     """
     try:
         places = await doublegis_service.search_places(query, city, limit)

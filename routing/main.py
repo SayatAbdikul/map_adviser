@@ -4,6 +4,14 @@ from typing import List
 from models import PlaceRequest, RouteResponse, Place
 from doublegis_service import DoubleGISService
 from gemini_service import GeminiService
+from routing_middleware import (
+    routing_middleware, 
+    RoutingRequest, 
+    RoutingResponse, 
+    RoutePoint, 
+    TransportMode,
+    get_directions
+)
 
 app = FastAPI(
     title="AI Route Planner",
@@ -124,13 +132,13 @@ async def plan_route(request: PlaceRequest):
 
 
 @app.post("/search-places", response_model=List[Place])
-async def search_places(query: str, city: str = "moscow", limit: int = 10):
+async def search_places(query: str, city: str = "astana", limit: int = 10):
     """
     Search for places in 2GIS
     
     Args:
         query: Search query (e.g., "restaurants", "museums")
-        city: City to search in
+        city: City to search in (default: astana)
         limit: Maximum number of results
     """
     try:
@@ -144,6 +152,95 @@ async def search_places(query: str, city: str = "moscow", limit: int = 10):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+# ============================================================================
+# ROUTING MIDDLEWARE ENDPOINTS
+# ============================================================================
+
+@app.post("/api/directions", response_model=RoutingResponse)
+async def get_route_directions(request: RoutingRequest):
+    """
+    Get directions/route between places
+    
+    Accepts JSON with:
+    - points: List of {lat, lon, name?} objects
+    - mode: "car" | "pedestrian" | "bicycle" | "public_transport"
+    - transport_types: (optional) for public transport ["metro", "bus", "tram", "trolleybus"]
+    
+    Returns route with distance, duration, and step-by-step directions
+    """
+    try:
+        response = await routing_middleware.get_route(request)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Routing error: {str(e)}")
+
+
+@app.post("/api/directions/simple")
+async def get_simple_directions(
+    points: List[dict],
+    mode: str = "car",
+    transport_types: List[str] = None
+):
+    """
+    Simplified directions endpoint
+    
+    Example request body:
+    {
+        "points": [
+            {"lat": 55.753544, "lon": 37.621211, "name": "Red Square"},
+            {"lat": 55.826195, "lon": 37.637295, "name": "VDNH"}
+        ],
+        "mode": "public_transport",
+        "transport_types": ["metro", "bus"]
+    }
+    """
+    try:
+        result = await get_directions(points, mode, transport_types)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Routing error: {str(e)}")
+
+
+@app.post("/api/compare-routes")
+async def compare_route_modes(points: List[dict]):
+    """
+    Compare all transport modes for the same route
+    
+    Returns times for car, walking, bicycle, and public transport
+    """
+    try:
+        results = {}
+        modes = ["car", "pedestrian", "bicycle", "public_transport"]
+        
+        for mode in modes:
+            result = await get_directions(points, mode)
+            if result["success"]:
+                results[mode] = {
+                    "duration_seconds": result["total_duration_seconds"],
+                    "duration_text": result["total_duration_text"],
+                    "distance_meters": result["total_distance_meters"]
+                }
+                if mode == "public_transport":
+                    results[mode]["transfers"] = result.get("transfers", 0)
+                    results[mode]["transport_types"] = result.get("transport_types", [])
+            else:
+                results[mode] = {"error": result.get("error", "Failed")}
+        
+        # Sort by duration
+        sorted_modes = sorted(
+            [(k, v) for k, v in results.items() if "duration_seconds" in v],
+            key=lambda x: x[1]["duration_seconds"]
+        )
+        
+        return {
+            "comparison": results,
+            "fastest_mode": sorted_modes[0][0] if sorted_modes else None,
+            "sorted_by_time": [m[0] for m in sorted_modes]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Comparison error: {str(e)}")
 
 
 if __name__ == "__main__":

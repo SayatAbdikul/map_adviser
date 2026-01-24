@@ -20,3 +20,6 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal docs (not for repo)
+ROUTING_API_GUIDE.md

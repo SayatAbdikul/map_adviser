@@ -12,7 +12,7 @@ class DoubleGISService:
         self.base_url = DOUBLEGIS_BASE_URL
         self.routing_url = DOUBLEGIS_ROUTING_URL
     
-    async def search_places(self, query: str, city: str = "moscow", limit: int = 10) -> List[Place]:
+    async def search_places(self, query: str, city: str = "astana", limit: int = 10) -> List[Place]:
         """
         Search for places using 2GIS API
         
@@ -28,10 +28,10 @@ class DoubleGISService:
         
         # Map common city names to coordinates (center of city)
         city_coords = {
+            "astana": "71.430420,51.128207",   # Astana center (Bayterek)
+            "almaty": "76.945465,43.238949",   # Almaty
             "moscow": "37.617635,55.755814",  # Moscow center
-            "spb": "30.315868,59.938951",      # St. Petersburg
             "dubai": "55.296249,25.276987",    # Dubai
-            "novosibirsk": "82.920430,55.030204"
         }
         
         # Use coordinates if city is in map, otherwise use as-is

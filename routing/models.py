@@ -5,7 +5,7 @@ from typing import List, Optional
 class PlaceRequest(BaseModel):
     """Request model for user's textual description"""
     description: str
-    city: Optional[str] = "moscow"  # Default city for search
+    city: Optional[str] = "astana"  # Default city for search
 
 
 class Place(BaseModel):

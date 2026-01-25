@@ -1,7 +1,7 @@
 import type { Message } from '@/store/useChatStore';
 import type { RouteResponse, RouteRequest, Route } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
 
 /**
  * Format duration in minutes to human-readable string
@@ -70,6 +70,18 @@ const formatRouteMessage = (response: RouteResponse): string => {
       lines.push(`🚶 Ходьба: ${formatDuration(route.walking_duration_minutes)}`);
     }
   }
+
+  // Time-based planning info
+  if (route.recommended_departure_time || route.estimated_arrival_time) {
+    lines.push('');
+    lines.push('🕐 Планирование по времени:');
+    if (route.recommended_departure_time) {
+      lines.push(`   🚀 Выезд: ${route.recommended_departure_time}`);
+    }
+    if (route.estimated_arrival_time) {
+      lines.push(`   🏁 Прибытие: ${route.estimated_arrival_time}`);
+    }
+  }
   lines.push('');
 
   // Waypoints
@@ -115,7 +127,7 @@ const formatRouteMessage = (response: RouteResponse): string => {
 const formatErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8000.';
+      return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8001.';
     }
     return `❌ Ошибка: ${error.message}`;
   }

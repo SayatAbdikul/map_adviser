@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
-import { Clock, Route, MapPin, ChevronRight, X } from 'lucide-react';
+import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn } from 'lucide-react';
 import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint } from '@/types';
 
 const { formatDuration, formatDistance } = chatService;
@@ -13,8 +13,9 @@ interface SegmentDisplayProps {
 }
 
 const SegmentDisplay: React.FC<SegmentDisplayProps> = ({ segment, waypoints, index }) => {
-  const fromWaypoint = waypoints.find(w => w.order === segment.from_waypoint);
-  const toWaypoint = waypoints.find(w => w.order === segment.to_waypoint);
+  // Use segment index to get corresponding waypoints (segment N goes from waypoint N to N+1)
+  const fromWaypoint = waypoints[index];
+  const toWaypoint = waypoints[index + 1];
 
   const durationMinutes = segment.duration_seconds / 60;
 
@@ -164,6 +165,36 @@ export const RouteDetailsPanel: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Time-based planning info */}
+        {(selectedRoute.recommended_departure_time || selectedRoute.estimated_arrival_time) && (
+          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center gap-2 text-blue-700 text-xs mb-2">
+              <CalendarClock size={14} />
+              <span className="font-medium">Планирование по времени</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {selectedRoute.recommended_departure_time && (
+                <div className="flex items-center gap-2">
+                  <LogOut size={14} className="text-blue-600" />
+                  <div>
+                    <div className="text-xs text-gray-500">Выезд</div>
+                    <div className="text-sm font-bold text-gray-900">{selectedRoute.recommended_departure_time}</div>
+                  </div>
+                </div>
+              )}
+              {selectedRoute.estimated_arrival_time && (
+                <div className="flex items-center gap-2">
+                  <LogIn size={14} className="text-green-600" />
+                  <div>
+                    <div className="text-xs text-gray-500">Прибытие</div>
+                    <div className="text-sm font-bold text-gray-900">{selectedRoute.estimated_arrival_time}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Public transport specific info */}
         {selectedRoute.transport_chain && (

@@ -46,6 +46,9 @@ export interface Route {
   transport_chain?: string;
   transfer_count?: number;
   walking_duration_minutes?: number;
+  // Time-based planning
+  recommended_departure_time?: string; // "HH:MM"
+  estimated_arrival_time?: string; // "HH:MM"
 }
 
 export interface RequestSummary {
@@ -53,6 +56,9 @@ export interface RequestSummary {
   intent: string;
   transport_mode?: string;
   optimization_choice?: string;
+  // Time-based planning
+  arrival_time?: string; // Desired arrival time "HH:MM"
+  departure_time?: string; // Recommended departure time "HH:MM"
 }
 
 export interface RouteResponse {

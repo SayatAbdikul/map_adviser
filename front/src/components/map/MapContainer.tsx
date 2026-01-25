@@ -127,7 +127,7 @@ export const MapContainer: React.FC = () => {
         const centerLon = (minLon + maxLon) / 2;
         const centerLat = (minLat + maxLat) / 2;
         
-        mapRef.current.setCenter([centerLon, centerLat]);
+        mapRef.current!.setCenter([centerLon, centerLat]);
         
         // Calculate appropriate zoom level
         const lonDiff = maxLon - minLon;
@@ -141,7 +141,7 @@ export const MapContainer: React.FC = () => {
         else if (maxDiff > 0.01) newZoom = 14;
         else newZoom = 15;
         
-        mapRef.current.setZoom(newZoom);
+        mapRef.current!.setZoom(newZoom);
       }
     }
   }, [mapReady, routeResponse, selectedRouteIndex]);

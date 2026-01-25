@@ -77,5 +77,5 @@ async def calculate_public_transport_route(
         intermediate_points=intermediate_pts,
         transport_types=transport_types,
         locale=locale,
-        include_pedestrian_instructions=False,
+        include_pedestrian_instructions=True,
     )

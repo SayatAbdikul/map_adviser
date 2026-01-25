@@ -131,7 +131,7 @@ export const chatService = {
   /**
    * Send a route query to the backend
    */
-  sendMessage: async (text: string, mode: 'driving' | 'walking' | 'cycling' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
+  sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
     const requestBody: RouteRequest = {
       query: text,
       mode: mode,
@@ -145,6 +145,7 @@ export const chatService = {
         },
         body: JSON.stringify(requestBody),
       });
+      console.log('response', response);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));

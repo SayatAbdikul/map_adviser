@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Car, PersonStanding, Bus } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
 import { Button } from '@/components/common/Button';
 
+type TransportMode = 'driving' | 'walking' | 'public_transport';
+
+const TRANSPORT_MODES: { mode: TransportMode; icon: React.ReactNode; label: string }[] = [
+  { mode: 'driving', icon: <Car size={16} />, label: 'Машина' },
+  { mode: 'walking', icon: <PersonStanding size={16} />, label: 'Пешком' },
+  { mode: 'public_transport', icon: <Bus size={16} />, label: 'Транспорт' },
+];
+
 export const ChatInput: React.FC = () => {
   const [text, setText] = useState('');
+  const [transportMode, setTransportMode] = useState<TransportMode>('driving');
   const { addMessage, setTyping } = useChatStore();
   const { setRouteResponse, setLoading, setError } = useRouteStore();
   const [isSending, setIsSending] = useState(false);
@@ -16,14 +25,15 @@ export const ChatInput: React.FC = () => {
     if (!text.trim() || isSending) return;
 
     const userMsg = text.trim();
+    const modeLabel = TRANSPORT_MODES.find(m => m.mode === transportMode)?.label || transportMode;
     setText('');
     setIsSending(true);
     setLoading(true);
 
-    // Add user message
+    // Add user message with mode indicator
     addMessage({
       id: Date.now().toString(),
-      text: userMsg,
+      text: `${userMsg} [${modeLabel}]`,
       sender: 'user',
       timestamp: Date.now(),
     });
@@ -31,7 +41,7 @@ export const ChatInput: React.FC = () => {
     setTyping(true);
 
     try {
-      const response = await chatService.sendMessage(userMsg);
+      const response = await chatService.sendMessage(userMsg, transportMode);
       
       // Add bot response message
       addMessage(response.message);
@@ -59,26 +69,48 @@ export const ChatInput: React.FC = () => {
   };
 
   return (
-    <form 
-      onSubmit={handleSend}
-      className="p-3 bg-white border-t border-gray-100 flex items-center gap-2"
-    >
-      <input
-        type="text"
-        className="flex-1 bg-gray-100 text-gray-900 placeholder-gray-500 border-0 rounded-full px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-        placeholder="Введите маршрут, например: от Байтерека до EXPO..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <Button 
-        type="submit" 
-        variant="primary" 
-        size="sm"
-        disabled={!text.trim() || isSending}
-        className="rounded-full w-10 h-10 p-0 flex-shrink-0"
+    <div className="p-3 bg-white border-t border-gray-100">
+      {/* Transport Mode Selector */}
+      <div className="flex items-center gap-1 mb-2">
+        {TRANSPORT_MODES.map(({ mode, icon, label }) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setTransportMode(mode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              transportMode === mode
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {icon}
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Input Form */}
+      <form
+        onSubmit={handleSend}
+        className="flex items-center gap-2"
       >
-        <Send size={18} className={text.trim() ? "ml-1" : ""} />
-      </Button>
-    </form>
+        <input
+          type="text"
+          className="flex-1 bg-gray-100 text-gray-900 placeholder-gray-500 border-0 rounded-full px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+          placeholder="Введите маршрут, например: от Байтерека до EXPO..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <Button
+          type="submit"
+          variant="primary"
+          size="sm"
+          disabled={!text.trim() || isSending}
+          className="rounded-full w-10 h-10 p-0 flex-shrink-0"
+        >
+          <Send size={18} className={text.trim() ? "ml-1" : ""} />
+        </Button>
+      </form>
+    </div>
   );
 };

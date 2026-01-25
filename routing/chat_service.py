@@ -4,7 +4,7 @@ Chat service for message operations using SQLAlchemy ORM.
 
 from typing import List, Optional
 from sqlalchemy import select, func, delete
-from database import db
+# from database import db
 from db_models import Message
 from auth_models import MessageCreate, MessageResponse, MessageListResponse
 

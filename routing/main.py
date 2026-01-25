@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from models import PlaceRequest, RouteResponse, Place
 from doublegis_service import DoubleGISService
-<<<<<<< Updated upstream
 from routing_middleware import (
     routing_middleware, 
     RoutingRequest, 
@@ -20,12 +19,10 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
     GeminiService = None
-=======
 from gemini_service import GeminiService
-from database import db
+# from database import db
 from chat_service import ChatService
 from auth_models import MessageCreate, MessageResponse, MessageListResponse
->>>>>>> Stashed changes
 
 app = FastAPI(
     title="AI Route Planner",
@@ -51,13 +48,13 @@ gemini_service = GeminiService() if GEMINI_AVAILABLE else None
 @app.on_event("startup")
 async def startup_event():
     """Initialize database connection pool on startup"""
-    await db.connect()
+    # await db.connect()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection pool on shutdown"""
-    await db.disconnect()
+    # await db.disconnect()
 
 
 

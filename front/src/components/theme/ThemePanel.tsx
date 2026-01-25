@@ -99,6 +99,13 @@ export const ThemePanel: React.FC = () => {
     ensureInView();
   }, [isOpen, ensureInView]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('mapadviser:open-theme-lab', handleOpen);
+    return () => window.removeEventListener('mapadviser:open-theme-lab', handleOpen);
+  }, []);
+
   const recipeLabel = `${MOOD_META[mood].label} / ${ACCENT_META[accent].label} / ${CONTRAST_META[contrast].label}`;
 
   return (

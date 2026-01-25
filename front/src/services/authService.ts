@@ -1,7 +1,5 @@
 import { useAuthStore } from '@/store/useAuthStore';
 
-
-
 export const authService = {
     login: async (email: string, password: string) => {
         const { login } = useAuthStore.getState();

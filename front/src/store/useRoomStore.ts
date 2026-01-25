@@ -1,8 +1,6 @@
 import { create } from 'zustand';
+import { WS_BASE_URL, buildApiUrl } from '@/constants';
 import type { RoomMember, MemberLocation, RoomState, WSMessage, ChatMessage, ChatRouteData } from '@/types';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
 
 interface RoomStore {
   // State
@@ -66,7 +64,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   // Create a new room
   createRoom: async (name = 'Trip Room') => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rooms`, {
+      const response = await fetch(buildApiUrl('/api/rooms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Lock, Mail } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/common/Button';
@@ -53,10 +53,13 @@ export const LoginPage: React.FC = () => {
           <p className="text-sm app-muted sm:text-base">
             Access saved routes, collaborative rooms, and live map intelligence.
           </p>
-          <div className="flex items-center gap-3 text-sm">
-            <Link to="/" className="app-muted hover:text-[color:var(--app-text)] transition-colors">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate('/')}>
               Back to landing
-            </Link>
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => navigate('/register')}>
+              Create account
+            </Button>
           </div>
         </div>
 
@@ -105,11 +108,11 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm app-muted">
-            New here?{' '}
-            <Link to="/register" className="font-semibold text-[color:var(--app-accent-strong)] hover:underline">
+          <div className="mt-6 flex flex-col gap-3 text-center">
+            <div className="text-sm app-muted">New here?</div>
+            <Button type="button" variant="secondary" className="w-full" onClick={() => navigate('/register')}>
               Create an account
-            </Link>
+            </Button>
           </div>
         </Card>
       </div>

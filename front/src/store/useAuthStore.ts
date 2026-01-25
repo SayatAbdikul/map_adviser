@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { buildApiUrl } from '@/constants';
 
 export interface User {
     id: number;
@@ -34,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
             login: async (email: string, password: string) => {
                 set({ isLoading: true, error: null });
                 try {
-                    const response = await fetch('http://localhost:8001/auth/login', {
+                    const response = await fetch(buildApiUrl('/auth/login'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password }),
@@ -86,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
                     const last_name = nameParts.slice(1).join(' ') || '';
                     const login = email.split('@')[0]; // Use email prefix as login
 
-                    const response = await fetch('http://localhost:8001/auth/register', {
+                    const response = await fetch(buildApiUrl('/auth/register'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password, login, first_name, last_name }),
@@ -143,7 +144,7 @@ export const useAuthStore = create<AuthState>()(
 
                 set({ isLoading: true });
                 try {
-                    const response = await fetch('http://localhost:8001/auth/me', {
+                    const response = await fetch(buildApiUrl('/auth/me'), {
                         headers: { 'Authorization': `Bearer ${token}` },
                     });
 

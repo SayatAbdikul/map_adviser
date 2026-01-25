@@ -8,4 +8,24 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
+    server: {
+        proxy: {
+            '/auth': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+            '/route': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+            '/api': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+            '/ws': {
+                target: 'ws://localhost:8000',
+                ws: true,
+            },
+        },
+    },
 });

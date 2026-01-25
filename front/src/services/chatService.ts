@@ -1,3 +1,4 @@
+import { API_BASE_URL, buildApiUrl } from '@/constants';
 import type { Message } from '@/store/useChatStore';
 import type { RouteResponse, LegacyRouteResponse, CoreAgentResponse } from '@/types';
 
@@ -148,7 +149,7 @@ const formatRouteMessage = (response: RouteResponse): string => {
 const formatErrorMessage = (error: unknown): string => {
     if (error instanceof Error) {
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8001.';
+            return `❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд (${API_BASE_URL}).`;
         }
         return `❌ Ошибка: ${error.message}`;
     }
@@ -165,13 +166,13 @@ export const chatService = {
      * Send a route query to the backend
      */
     sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
-        const requestBody = {
+        const requestBody: RouteRequest = {
             query: text,
-            mode: mode,
+            mode,
         };
 
         try {
-            const response = await fetch(`${API_BASE_URL}/route`, {
+            const response = await fetch(buildApiUrl('/route'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -37,16 +37,17 @@ export const useDraggablePanel = (
   const clampPosition = useCallback(
     (next: DragPosition) => {
       const panel = panelRef.current;
-      if (!panel) {
-        setPosition(next);
-        return;
-      }
-      const rect = panel.getBoundingClientRect();
-      const maxX = window.innerWidth - rect.width - boundsPadding;
-      const maxY = window.innerHeight - rect.height - boundsPadding;
-      const clampedX = Math.min(Math.max(next.x, boundsPadding), Math.max(boundsPadding, maxX));
-      const clampedY = Math.min(Math.max(next.y, boundsPadding), Math.max(boundsPadding, maxY));
-      setPosition({ x: clampedX, y: clampedY });
+      const rect = panel?.getBoundingClientRect();
+      const maxX = rect ? window.innerWidth - rect.width - boundsPadding : undefined;
+      const maxY = rect ? window.innerHeight - rect.height - boundsPadding : undefined;
+      const clampedX = Math.min(Math.max(next.x, boundsPadding), Math.max(boundsPadding, maxX ?? next.x));
+      const clampedY = Math.min(Math.max(next.y, boundsPadding), Math.max(boundsPadding, maxY ?? next.y));
+      const clamped = { x: clampedX, y: clampedY };
+
+      setPosition((prev) => {
+        if (prev && prev.x === clamped.x && prev.y === clamped.y) return prev;
+        return clamped;
+      });
     },
     [boundsPadding]
   );
@@ -140,9 +141,10 @@ export const useDraggablePanel = (
   const didDrag = useCallback(() => dragStateRef.current?.moved ?? false, []);
 
   const ensureInView = useCallback(() => {
-    if (position === null) return;
-    clampPosition(position);
-  }, [position, clampPosition]);
+    const current = positionRef.current;
+    if (!current) return;
+    clampPosition(current);
+  }, [clampPosition]);
 
   return {
     panelRef,

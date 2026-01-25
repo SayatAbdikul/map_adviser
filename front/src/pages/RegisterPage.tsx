@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Lock, Mail, User } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/common/Button';
@@ -62,7 +62,7 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (!validations.passwordLength) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters');
       return;
     }
 
@@ -94,10 +94,13 @@ export const RegisterPage: React.FC = () => {
           <p className="text-sm app-muted sm:text-base">
             Unlock the live map, room sharing, and assistant insights in one workspace.
           </p>
-          <div className="flex items-center gap-3 text-sm">
-            <Link to="/" className="app-muted hover:text-[color:var(--app-text)] transition-colors">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate('/')}>
               Back to landing
-            </Link>
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => navigate('/login')}>
+              Sign in
+            </Button>
           </div>
         </div>
 
@@ -155,20 +158,10 @@ export const RegisterPage: React.FC = () => {
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Minimum 8 characters"
+                placeholder="Create a password"
                 leftIcon={<Lock size={18} />}
                 disabled={isLoading}
               />
-              {formData.password && (
-                <div
-                  className={`flex items-center gap-2 text-xs ${
-                    validations.passwordLength ? 'text-emerald-600' : 'text-red-600'
-                  }`}
-                >
-                  {validations.passwordLength ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                  {validations.passwordLength ? 'Password strong' : 'At least 8 characters'}
-                </div>
-              )}
             </div>
             <div className="space-y-2">
               <Input
@@ -181,16 +174,6 @@ export const RegisterPage: React.FC = () => {
                 leftIcon={<Lock size={18} />}
                 disabled={isLoading}
               />
-              {formData.confirmPassword && (
-                <div
-                  className={`flex items-center gap-2 text-xs ${
-                    validations.passwordMatch ? 'text-emerald-600' : 'text-red-600'
-                  }`}
-                >
-                  {validations.passwordMatch ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                  {validations.passwordMatch ? 'Passwords match' : 'Passwords do not match'}
-                </div>
-              )}
             </div>
 
             <Button
@@ -198,17 +181,16 @@ export const RegisterPage: React.FC = () => {
               variant="primary"
               className="w-full"
               isLoading={isLoading}
-              disabled={!validations.emailFormat || !validations.passwordLength || !validations.passwordMatch}
             >
               {isLoading ? 'Creating account...' : 'Create account'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm app-muted">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-[color:var(--app-accent-strong)] hover:underline">
+          <div className="mt-6 flex flex-col gap-3 text-center">
+            <div className="text-sm app-muted">Already have an account?</div>
+            <Button type="button" variant="secondary" className="w-full" onClick={() => navigate('/login')}>
               Sign in
-            </Link>
+            </Button>
           </div>
         </Card>
       </div>

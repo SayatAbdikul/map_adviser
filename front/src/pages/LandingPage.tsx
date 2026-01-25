@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, MessageSquare, Navigation2, Palette, ShieldCheck, Users } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { useAuthStore } from '@/store/useAuthStore';
+import {
+  THEME_ACCENTS,
+  THEME_CONTRASTS,
+  THEME_MOODS,
+  type ThemeAccent,
+  type ThemeContrast,
+  type ThemeMood,
+  useThemeStore,
+} from '@/store/useThemeStore';
 
 const FEATURES = [
   {
@@ -42,11 +51,51 @@ const STEPS = [
   },
 ];
 
+const MOOD_LABELS: Record<ThemeMood, string> = {
+  sand: 'Sand',
+  mist: 'Mist',
+  stone: 'Stone',
+};
+
+const ACCENT_LABELS: Record<ThemeAccent, string> = {
+  citrus: 'Citrus',
+  lagoon: 'Lagoon',
+  clay: 'Clay',
+  moss: 'Moss',
+  cobalt: 'Cobalt',
+  ember: 'Ember',
+};
+
+const CONTRAST_LABELS: Record<ThemeContrast, string> = {
+  soft: 'Soft',
+  balanced: 'Balanced',
+  bold: 'Bold',
+};
+
+const hsl = (hue: number, saturation: number, lightness: number) =>
+  `hsl(${hue} ${saturation}% ${lightness}%)`;
+
+const ACCENT_SWATCHES: Record<ThemeAccent, string> = {
+  citrus: hsl(38, 92, 52),
+  lagoon: hsl(188, 72, 45),
+  clay: hsl(18, 82, 52),
+  moss: hsl(140, 44, 40),
+  cobalt: hsl(210, 72, 48),
+  ember: hsl(8, 78, 50),
+};
+
 export const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
+  const { mood, accent, contrast, setMood, setAccent, setContrast } = useThemeStore();
 
   const primaryCta = isAuthenticated ? { label: 'Open live map', to: '/map' } : { label: 'Create account', to: '/register' };
   const secondaryCta = isAuthenticated ? { label: 'Go to map', to: '/map' } : { label: 'Sign in', to: '/login' };
+  const themeRecipe = `${MOOD_LABELS[mood]} / ${ACCENT_LABELS[accent]} / ${CONTRAST_LABELS[contrast]}`;
+
+  const openThemeLab = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('mapadviser:open-theme-lab'));
+  };
 
   const buttonBase =
     'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[color:var(--app-canvas)] app-ring';
@@ -75,10 +124,7 @@ export const LandingPage: React.FC = () => {
               </Link>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="text-sm font-medium app-muted hover:text-[color:var(--app-text)] transition-colors"
-                >
+                <Link to="/login" className={`${buttonSecondary} h-10 px-4 text-sm`}>
                   Sign in
                 </Link>
                 <Link to="/register" className={`${buttonPrimary} h-10 px-4 text-sm`}>
@@ -217,6 +263,115 @@ export const LandingPage: React.FC = () => {
 
         <section className="relative py-12">
           <div className="mx-auto w-full max-w-6xl px-6">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+              <div className="space-y-4">
+                <div className="text-xs uppercase tracking-[0.4em] app-muted">Theme lab</div>
+                <h2 className="font-display text-3xl app-text">Customize the map mood in seconds.</h2>
+                <p className="text-sm app-muted">
+                  Mix a base mood, accent color, and contrast level. Every change updates the canvas instantly.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={openThemeLab} className={`${buttonSecondary} h-11 px-5 text-sm`}>
+                    Open theme lab
+                  </button>
+                  {!isAuthenticated && (
+                    <Link to="/register" className={`${buttonPrimary} h-11 px-5 text-sm`}>
+                      Create account
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              <Card className="relative overflow-hidden rounded-3xl p-6">
+                <div className="absolute -top-16 -right-10 h-40 w-40 rounded-full bg-[color:var(--app-accent-soft)] blur-3xl opacity-70" />
+                <div className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-[color:var(--app-surface-2)] blur-3xl opacity-80" />
+                <div className="relative space-y-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.35em] app-muted">Theme recipe</div>
+                    <div className="mt-2 text-lg font-semibold app-text">{themeRecipe}</div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="mb-2 text-xs font-semibold app-text">Mood</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {THEME_MOODS.map((option) => {
+                          const selected = option === mood;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setMood(option)}
+                              aria-pressed={selected}
+                              className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                                selected
+                                  ? 'border-[color:var(--app-accent)] bg-[color:var(--app-accent-soft)] text-[color:var(--app-accent-strong)]'
+                                  : 'border app-border bg-[color:var(--app-surface)] app-text hover:bg-[color:var(--app-surface-2)]'
+                              }`}
+                            >
+                              {MOOD_LABELS[option]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 text-xs font-semibold app-text">Accent</div>
+                      <div className="grid grid-cols-6 gap-2">
+                        {THEME_ACCENTS.map((option) => {
+                          const selected = option === accent;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setAccent(option)}
+                              aria-pressed={selected}
+                              title={ACCENT_LABELS[option]}
+                              className={`flex h-9 w-9 items-center justify-center rounded-full border transition-all ${
+                                selected ? 'border-[color:var(--app-accent)]' : 'border app-border'
+                              }`}
+                              style={{ background: ACCENT_SWATCHES[option] }}
+                            >
+                              {selected && <span className="h-2.5 w-2.5 rounded-full bg-white/90" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 text-xs font-semibold app-text">Contrast</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {THEME_CONTRASTS.map((option) => {
+                          const selected = option === contrast;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setContrast(option)}
+                              aria-pressed={selected}
+                              className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                                selected
+                                  ? 'border-[color:var(--app-accent)] bg-[color:var(--app-accent-soft)] text-[color:var(--app-accent-strong)]'
+                                  : 'border app-border bg-[color:var(--app-surface)] app-text hover:bg-[color:var(--app-surface-2)]'
+                              }`}
+                            >
+                              {CONTRAST_LABELS[option]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative py-12">
+          <div className="mx-auto w-full max-w-6xl px-6">
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
               <div className="space-y-4">
                 <div className="text-xs uppercase tracking-[0.4em] app-muted">How it flows</div>
@@ -279,11 +434,11 @@ export const LandingPage: React.FC = () => {
       <footer className="relative z-10 border-t app-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-6 text-sm app-muted md:flex-row md:items-center md:justify-between">
           <div>Copyright 2026 Map Adviser. Built by Competitive Vibecoders.</div>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/login" className="hover:text-[color:var(--app-text)] transition-colors">
+          <div className="flex flex-wrap gap-3">
+            <Link to="/login" className={`${buttonSecondary} h-9 px-4 text-xs`}>
               Sign in
             </Link>
-            <Link to="/register" className="hover:text-[color:var(--app-text)] transition-colors">
+            <Link to="/register" className={`${buttonPrimary} h-9 px-4 text-xs`}>
               Register
             </Link>
           </div>

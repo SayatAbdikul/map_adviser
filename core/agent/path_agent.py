@@ -722,7 +722,6 @@ async def plan_route(
         "public_transport": "на общественном транспорте (автобус, метро, трамвай)"
     }
     mode_ru = mode_map.get(mode, "на машине")
-    logger.debug(query, mode)
     # Build mode-specific instructions
     if mode == "public_transport":
         mode_instructions = """Способ передвижения: на общественном транспорте

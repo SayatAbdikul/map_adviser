@@ -41,7 +41,7 @@ class GISRoutingClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or get_api_key()
-        self.client = create_2gis_async_client(timeout=30.0)
+        self.client = create_2gis_async_client(timeout=90.0)
 
     async def close(self):
         """Close the HTTP client."""

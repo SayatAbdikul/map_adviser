@@ -41,82 +41,37 @@ const getTransportModeDisplay = (mode: string | undefined): string => {
  * Format route response into a readable chat message
  */
 const formatRouteMessage = (response: RouteResponse): string => {
-    const { request_summary, routes } = response;
+    // Handle the actual backend response format
+    const { places, route_url, total_distance, total_duration, gemini_explanation } = response;
 
-    if (!routes || routes.length === 0) {
+    if (!places || places.length === 0) {
         return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
     }
 
-    const route = routes[0] as Route;
     const lines: string[] = [];
 
-    // Header with intent
-    lines.push(`🗺️ ${request_summary.intent}`);
+    // Header with Gemini explanation
+    lines.push(`🗺️ ${gemini_explanation}`);
     lines.push('');
 
     // Route summary
-    lines.push(`📍 Маршрут: ${route.title}`);
-    lines.push(`📏 Расстояние: ${formatDistance(route.total_distance_meters)}`);
-    lines.push(`⏱️ Время в пути: ${formatDuration(route.total_duration_minutes)}`);
-    lines.push(getTransportModeDisplay(request_summary.transport_mode));
+    const distanceKm = total_distance ? (total_distance / 1000).toFixed(1) : 'неизвестно';
+    const durationMin = total_duration ? Math.round(total_duration / 60) : null;
 
-    // Public transport specific info
-    if (route.transport_chain) {
-        lines.push(`🚇 Маршрут: ${route.transport_chain}`);
-        if (route.transfer_count !== undefined) {
-            lines.push(`🔄 Пересадок: ${route.transfer_count}`);
-        }
-        if (route.walking_duration_minutes !== undefined) {
-            lines.push(`🚶 Ходьба: ${formatDuration(route.walking_duration_minutes)}`);
-        }
-    }
-
-    // Time-based planning info
-    if (route.recommended_departure_time || route.estimated_arrival_time) {
-        lines.push('');
-        lines.push('🕐 Планирование по времени:');
-        if (route.recommended_departure_time) {
-            lines.push(`   🚀 Выезд: ${route.recommended_departure_time}`);
-        }
-        if (route.estimated_arrival_time) {
-            lines.push(`   🏁 Прибытие: ${route.estimated_arrival_time}`);
-        }
-    }
+    lines.push(`📍 Найдено мест: ${places.length}`);
+    lines.push(`📏 Общее расстояние: ${distanceKm} км`);
+    lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
     lines.push('');
 
-    // Waypoints
-    if (route.waypoints && route.waypoints.length > 0) {
-        lines.push('Маршрут проходит через:');
-        route.waypoints.forEach((wp, index) => {
-            const icon = wp.type === 'start' ? '🟢' : wp.type === 'end' ? '🔴' : '📍';
-            lines.push(`${icon} ${index + 1}. ${wp.name} (${wp.address})`);
-        });
-        lines.push('');
-    }
+    // Places list
+    lines.push('📍 Места для посещения:');
+    places.forEach((place, index) => {
+        lines.push(`${index + 1}. **${place.name}**`);
+        lines.push(`   📍 ${place.address}`);
+    });
 
-    // Turn-by-turn directions (show first few)
-    if (route.directions && route.directions.length > 0) {
-        lines.push('Основные повороты:');
-        const mainDirections = route.directions
-            .filter(d => d.instruction && d.type !== 'begin' && d.type !== 'end')
-            .slice(0, 5);
-
-        mainDirections.forEach((dir) => {
-            if (dir.instruction) {
-                lines.push(`➡️ ${dir.instruction}`);
-            }
-        });
-
-        if (route.directions.length > 5) {
-            lines.push(`... и ещё ${route.directions.length - 5} поворотов`);
-        }
-    }
-
-    // If multiple routes available
-    if (routes.length > 1) {
-        lines.push('');
-        lines.push(`📊 Также доступно ещё ${routes.length - 1} вариантов маршрута.`);
-    }
+    lines.push('');
+    lines.push(`🗺️ [Открыть маршрут в 2GIS](${route_url})`);
 
     return lines.join('\n');
 };

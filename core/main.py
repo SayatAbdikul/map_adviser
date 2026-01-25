@@ -109,12 +109,6 @@ async def create_route(request: RouteRequest):
         )
 
 
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8001)
-
-
 # ==================== Room Chat Helper ====================
 
 async def _handle_room_chat_agent(room: Room, query: str):
@@ -270,4 +264,9 @@ async def websocket_room(websocket: WebSocket, code: str, nickname: str = "Anony
     except Exception as e:
         print(f"WebSocket error: {e}")
         await room_manager.leave_room(room, member.id)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

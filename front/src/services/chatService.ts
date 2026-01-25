@@ -1,7 +1,21 @@
 import type { Message } from '@/store/useChatStore';
-import type { RouteResponse, RouteRequest, Route } from '@/types';
+import type { RouteResponse, LegacyRouteResponse, CoreAgentResponse } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+/**
+ * Type guard to check if response is the new core agent format
+ */
+const isCoreAgentResponse = (response: RouteResponse): response is CoreAgentResponse => {
+    return (response as CoreAgentResponse).routes !== undefined;
+};
+
+/**
+ * Type guard to check if response is the legacy format
+ */
+const isLegacyResponse = (response: RouteResponse): response is LegacyRouteResponse => {
+    return (response as LegacyRouteResponse).places !== undefined;
+};
 
 /**
  * Format duration in minutes to human-readable string
@@ -26,54 +40,106 @@ const formatDistance = (meters: number | null | undefined): string => {
 };
 
 /**
- * Get transport mode display name
- */
-const getTransportModeDisplay = (mode: string | undefined): string => {
-    switch (mode) {
-        case 'driving': return '🚗 На машине';
-        case 'walking': return '🚶 Пешком';
-        case 'public_transport': return '🚌 На общественном транспорте';
-        default: return mode || 'неизвестно';
-    }
-};
-
-/**
  * Format route response into a readable chat message
  */
 const formatRouteMessage = (response: RouteResponse): string => {
-    // Handle the actual backend response format
-    const { places, route_url, total_distance, total_duration, gemini_explanation } = response;
+    // Handle the new core agent response format
+    if (isCoreAgentResponse(response)) {
+        const routes = response.routes || [];
+        
+        if (routes.length === 0) {
+            return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
+        }
 
-    if (!places || places.length === 0) {
-        return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
+        const lines: string[] = [];
+        const firstRoute = routes[0];
+        const waypoints = firstRoute.waypoints || [];
+        
+        // Header
+        lines.push('🗺️ Маршрут построен успешно!');
+        lines.push('');
+
+        // Route summary
+        const distanceKm = firstRoute.total_distance_meters ? (firstRoute.total_distance_meters / 1000).toFixed(1) : 'неизвестно';
+        const durationMin = firstRoute.total_duration_minutes || null;
+
+        lines.push(`📏 Общее расстояние: ${distanceKm} км`);
+        lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
+        
+        if (firstRoute.transport_chain) {
+            lines.push(`🚌 Транспорт: ${firstRoute.transport_chain}`);
+        }
+        
+        if (firstRoute.transfer_count !== undefined) {
+            lines.push(`🔄 Пересадок: ${firstRoute.transfer_count}`);
+        }
+        
+        lines.push('');
+
+        // Waypoints list
+        if (waypoints.length > 0) {
+            lines.push('📍 Точки маршрута:');
+            waypoints.forEach((waypoint) => {
+                const typeIcon = waypoint.type === 'start' ? '🟢' : waypoint.type === 'end' ? '🔴' : '📍';
+                lines.push(`${typeIcon} **${waypoint.name}**`);
+                if (waypoint.address) {
+                    lines.push(`   📍 ${waypoint.address}`);
+                }
+            });
+        }
+
+        // Show route options if multiple
+        if (routes.length > 1) {
+            lines.push('');
+            lines.push('🗺️ Доступные варианты маршрута:');
+            routes.forEach((route, index) => {
+                const distKm = route.total_distance_meters ? (route.total_distance_meters / 1000).toFixed(1) : '?';
+                const durMin = route.total_duration_minutes || '?';
+                lines.push(`${index + 1}. ${route.title || `Вариант ${index + 1}`} - ${distKm} км, ${durMin} мин`);
+            });
+        }
+
+        return lines.join('\n');
     }
 
-    const lines: string[] = [];
+    // Handle the old routing service response format for backwards compatibility
+    if (isLegacyResponse(response)) {
+        const { places, route_url, total_distance, total_duration, gemini_explanation } = response;
 
-    // Header with Gemini explanation
-    lines.push(`🗺️ ${gemini_explanation}`);
-    lines.push('');
+        if (!places || places.length === 0) {
+            return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
+        }
 
-    // Route summary
-    const distanceKm = total_distance ? (total_distance / 1000).toFixed(1) : 'неизвестно';
-    const durationMin = total_duration ? Math.round(total_duration / 60) : null;
+        const lines: string[] = [];
 
-    lines.push(`📍 Найдено мест: ${places.length}`);
-    lines.push(`📏 Общее расстояние: ${distanceKm} км`);
-    lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
-    lines.push('');
+        // Header with Gemini explanation
+        lines.push(`🗺️ ${gemini_explanation}`);
+        lines.push('');
 
-    // Places list
-    lines.push('📍 Места для посещения:');
-    places.forEach((place, index) => {
-        lines.push(`${index + 1}. **${place.name}**`);
-        lines.push(`   📍 ${place.address}`);
-    });
+        // Route summary
+        const distanceKm = total_distance ? (total_distance / 1000).toFixed(1) : 'неизвестно';
+        const durationMin = total_duration ? Math.round(total_duration / 60) : null;
 
-    lines.push('');
-    lines.push(`🗺️ [Открыть маршрут в 2GIS](${route_url})`);
+        lines.push(`📍 Найдено мест: ${places.length}`);
+        lines.push(`📏 Общее расстояние: ${distanceKm} км`);
+        lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
+        lines.push('');
 
-    return lines.join('\n');
+        // Places list
+        lines.push('📍 Места для посещения:');
+        places.forEach((place, index) => {
+            lines.push(`${index + 1}. **${place.name}**`);
+            lines.push(`   📍 ${place.address}`);
+        });
+
+        lines.push('');
+        lines.push(`🗺️ [Открыть маршрут в 2GIS](${route_url})`);
+
+        return lines.join('\n');
+    }
+
+    // Fallback if format is not recognized
+    return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
 };
 
 /**

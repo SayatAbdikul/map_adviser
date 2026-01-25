@@ -18,7 +18,7 @@ export interface RouteWaypoint {
 export interface RouteDirection {
     instruction: string;
     type: string;
-    street_name: string;
+    street_name?: string;
     distance_meters: number;
     duration_seconds: number;
 }
@@ -66,12 +66,12 @@ export interface PublicTransportSchedule {
 
 export interface Route {
   route_id: number;
-  title: string;
-  total_distance_meters: number | null;
-  total_duration_minutes: number | null;
+  title?: string;
+  total_distance_meters?: number | null;
+  total_duration_minutes?: number | null;
   waypoints: RouteWaypoint[];
   route_geometry?: [number, number][]; // [lon, lat][]
-  directions?: RouteDirection[];
+  directions?: Direction[];
   segments?: RouteSegmentInfo[];
   // Public transport specific
   transport_chain?: string;
@@ -103,13 +103,74 @@ export interface Place {
     type?: string;
 }
 
-export interface RouteResponse {
+// Legacy routing service response format
+export interface LegacyRouteResponse {
     places: Place[];
     route_url: string;
     total_distance?: number;  // in meters
     total_duration?: number;  // in seconds
     gemini_explanation: string;
 }
+
+// New core agent response format
+export interface CoreAgentResponse {
+    routes: CoreRoute[];
+    request_summary?: {
+        optimization_choice?: string;
+        transport_mode?: string;
+    };
+}
+
+export interface CoreRoute {
+    route_id: number;
+    title?: string;
+    total_distance_meters?: number;
+    total_duration_minutes?: number;
+    recommended_departure_time?: string;
+    estimated_arrival_time?: string;
+    transport_chain?: string;
+    transfer_count?: number;
+    walking_duration_minutes?: number;
+    movements?: Movement[];
+    waypoints: RouteWaypoint[];
+    route_geometry?: [number, number][];
+    directions?: Direction[];
+    segments?: Segment[];
+    schedule?: PublicTransportSchedule; // Add schedule support
+}
+
+export interface Movement {
+    type: 'walkway' | 'passage' | 'transfer';
+    transport_type: 'walk' | 'metro' | 'bus' | 'tram' | 'trolleybus';
+    duration_seconds: number;
+    distance_meters: number;
+    from_name: string;
+    from_stop?: string;
+    to_stop?: string;
+    line_name?: string;
+    line_color?: string;
+    route_name?: string;
+    route_color?: string;
+    geometry?: [number, number][];
+}
+
+export interface Direction {
+    instruction: string;
+    type: string;
+    street_name?: string;
+    distance_meters?: number;
+    duration_seconds?: number;
+}
+
+export interface Segment {
+    from_waypoint: number;
+    to_waypoint: number;
+    distance_meters: number;
+    duration_seconds: number;
+}
+
+// Union type to support both formats
+export type RouteResponse = LegacyRouteResponse | CoreAgentResponse;
 
 export interface RouteRequest {
     query: string;
@@ -205,15 +266,7 @@ export interface Place {
     type?: string;
 }
 
-export interface RouteResponse {
-    places: Place[];
-    route_url: string;
-    total_distance?: number;  // in meters
-    total_duration?: number;  // in seconds
-    gemini_explanation: string;
-}
 
-// WebSocket message types
 export type WSMessageType =
     | 'room_state'
     | 'member_joined'
@@ -261,4 +314,13 @@ export interface WSChatMessageReceived extends WSMessage {
 export interface WSAgentTyping extends WSMessage {
     type: 'agent_typing';
     is_typing: boolean;
+}
+
+// Type guards for route responses
+export function isCoreAgentResponse(response: RouteResponse): response is CoreAgentResponse {
+    return 'routes' in response && Array.isArray(response.routes);
+}
+
+export function isLegacyResponse(response: RouteResponse): response is LegacyRouteResponse {
+    return 'places' in response && Array.isArray(response.places);
 }

@@ -2,8 +2,13 @@ import React from 'react';
 import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
 import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn, Train, Bus, Footprints, ArrowRight } from 'lucide-react';
+<<<<<<< Updated upstream
 import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement } from '@/types';
 import { useDraggablePanel } from '@/hooks/useDraggablePanel';
+=======
+import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement, CoreRoute } from '@/types';
+import { isCoreAgentResponse } from '@/types';
+>>>>>>> Stashed changes
 
 const { formatDuration, formatDistance } = chatService;
 
@@ -203,7 +208,8 @@ export const RouteDetailsPanel: React.FC = () => {
     offset: 16,
   });
 
-  if (!routeResponse?.routes?.length) {
+  // Handle different response formats
+  if (!routeResponse || !isCoreAgentResponse(routeResponse) || !routeResponse.routes?.length) {
     return null;
   }
 
@@ -216,7 +222,7 @@ export const RouteDetailsPanel: React.FC = () => {
   const displaySegments: RouteSegmentInfo[] = segments.length > 0
     ? segments
     : waypoints.length > 1
-      ? waypoints.slice(0, -1).map((wp, idx) => ({
+      ? waypoints.slice(0, -1).map((wp: any, idx: number) => ({
           from_waypoint: wp.order,
           to_waypoint: waypoints[idx + 1].order,
           distance_meters: 0,
@@ -225,7 +231,7 @@ export const RouteDetailsPanel: React.FC = () => {
       : [];
 
   const getTransportIcon = () => {
-    const mode = routeResponse.request_summary.transport_mode;
+    const mode = routeResponse.request_summary?.transport_mode;
     switch (mode) {
       case 'walking': return '🚶';
       case 'public_transport': return '🚌';
@@ -267,7 +273,7 @@ export const RouteDetailsPanel: React.FC = () => {
         <div className="px-4 py-3 border-b border-[color:var(--app-border)]">
           <div className="text-xs app-muted mb-2">Выберите вариант маршрута:</div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {routeResponse.routes.map((route, index) => (
+            {routeResponse.routes.map((route: CoreRoute, index: number) => (
               <RouteVariantButton
                 key={route.route_id}
                 route={route}
@@ -364,7 +370,7 @@ export const RouteDetailsPanel: React.FC = () => {
       {selectedRoute.movements && selectedRoute.movements.length > 0 ? (
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <div className="text-xs text-gray-500 mb-2">Этапы маршрута: <span className="text-gray-400">(наведите для подсветки на карте)</span></div>
-          {selectedRoute.movements.map((movement, index) => (
+          {selectedRoute.movements.map((movement: any, index: number) => (
             <MovementDisplay
               key={`movement-${index}`}
               movement={movement}
@@ -390,7 +396,7 @@ export const RouteDetailsPanel: React.FC = () => {
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-3">
           <div className="text-xs app-muted mb-2">Точки маршрута:</div>
-          {waypoints.map((waypoint, index) => (
+          {waypoints.map((waypoint: any, index: number) => (
             <div key={waypoint.order} className="flex items-center gap-3 py-2 border-b border-[color:var(--app-border)] last:border-b-0">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                 waypoint.type === 'start'

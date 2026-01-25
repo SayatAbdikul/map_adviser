@@ -7,7 +7,8 @@ import { useRoomStore } from '@/store/useRoomStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
 import { RouteDetailsPanel } from '../route/RouteDetailsPanel';
-import type { Route, PublicTransportMovement } from '@/types';
+import type { Route, PublicTransportMovement, CoreRoute } from '@/types';
+import { isCoreAgentResponse } from '@/types';
 import { RoomPanel, MemberMarkers } from '../room';
 
 const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
@@ -163,26 +164,30 @@ export const MapContainer: React.FC = () => {
       transferMarkerRefs.current = [];
     }
 
-    // Check if we have route data
-    if (!routeResponse?.routes?.length) return;
+    // Check if we have route data and handle different response formats
+    if (!routeResponse) return;
 
-    const routes = routeResponse.routes;
-    const selectedRoute = routes[selectedRouteIndex] || routes[0];
-    if (!selectedRoute) return;
+    // Handle new core agent response format
+    if (isCoreAgentResponse(routeResponse)) {
+      const routes = routeResponse.routes || [];
+      if (!routes.length) return;
 
-    const isPublicTransport = routeResponse.request_summary.transport_mode === 'public_transport';
+      const selectedRoute = routes[selectedRouteIndex] || routes[0];
+      if (!selectedRoute) return;
 
-    // Draw all route geometries - non-selected first (transparent), then selected (solid)
-    // First pass: draw non-selected routes with transparent color (using RGBA)
-    routeResponse.routes.forEach((route, index) => {
-      if (index === selectedRouteIndex) return; // Skip selected route for now
-      const geometry = getRouteGeometry(route);
-      if (geometry.length > 1) {
-        const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
-          coordinates: geometry,
-          width: 5,
-          color: 'rgba(37, 99, 235, 0.35)',
-        });
+      const isPublicTransport = routeResponse.request_summary?.transport_mode === 'public_transport';
+
+      // Draw all route geometries - non-selected first (transparent), then selected (solid)
+      // First pass: draw non-selected routes with transparent color (using RGBA)
+      routes.forEach((route: CoreRoute, index: number) => {
+        if (index === selectedRouteIndex) return; // Skip selected route for now
+        const geometry = getRouteGeometry(route);
+        if (geometry.length > 1) {
+          const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
+            coordinates: geometry,
+            width: 5,
+            color: 'rgba(37, 99, 235, 0.35)',
+          });
         routeRefs.current.push(polyline);
       }
     });
@@ -278,7 +283,7 @@ export const MapContainer: React.FC = () => {
     // Fit map to show all waypoints
     if (selectedRoute.waypoints && selectedRoute.waypoints.length > 1) {
       const coords = selectedRoute.waypoints
-        .map(w => {
+        .map((w: any) => {
           const lon = w.location?.lon ?? w.lon;
           const lat = w.location?.lat ?? w.lat;
           return lon !== undefined && lat !== undefined ? { lon, lat } : null;
@@ -286,8 +291,8 @@ export const MapContainer: React.FC = () => {
         .filter((c): c is { lon: number; lat: number } => c !== null);
       
       if (coords.length >= 2) {
-        const lons = coords.map(c => c.lon);
-        const lats = coords.map(c => c.lat);
+        const lons = coords.map((c: { lon: number; lat: number }) => c.lon);
+        const lats = coords.map((c: { lon: number; lat: number }) => c.lat);
         const minLon = Math.min(...lons);
         const maxLon = Math.max(...lons);
         const minLat = Math.min(...lats);
@@ -313,6 +318,13 @@ export const MapContainer: React.FC = () => {
         mapRef.current!.setZoom(newZoom);
       }
     }
+    
+    return; // Exit after handling core agent response
+    }
+
+    // Handle legacy response format (for backward compatibility)
+    // Note: Legacy format handling would go here if needed
+    // For now, we only support the new core agent format
   }, [mapReady, routeResponse, selectedRouteIndex, highlightedMovementIndex]);
 
   return (

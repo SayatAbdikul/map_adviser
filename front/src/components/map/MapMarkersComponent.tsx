@@ -5,7 +5,8 @@ import { X } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { useMapStore } from '@/store/useMapStore';
 import { useRouteStore } from '@/store/useRouteStore';
-import type { Route, RouteWaypoint } from '@/types';
+import type { Route, RouteWaypoint, CoreRoute } from '@/types';
+import { isCoreAgentResponse } from '@/types';
 
 type TransportMode = 'driving' | 'walking' | 'public_transport';
 
@@ -78,14 +79,20 @@ export const MapMarkersComponent: React.FC = () => {
   );
   const mapglRef = useRef<Awaited<ReturnType<typeof load>> | null>(null);
 
-  const routes = routeResponse?.routes ?? [];
+  // Handle different response formats
+  const routes = routeResponse && isCoreAgentResponse(routeResponse) 
+    ? routeResponse.routes ?? [] 
+    : [];
+  
   console.log('routes', routes);
-  const requestMode = routeResponse?.request_summary?.transport_mode ?? null;
+  const requestMode = routeResponse && isCoreAgentResponse(routeResponse)
+    ? routeResponse.request_summary?.transport_mode ?? null
+    : null;
 
   const colorById = useMemo(
     () =>
       new Map(
-        routes.map((route, index) => [
+        routes.map((route: CoreRoute, index: number) => [
           route.route_id,
           ROUTE_COLORS[index % ROUTE_COLORS.length],
         ])
@@ -111,11 +118,11 @@ export const MapMarkersComponent: React.FC = () => {
       const mapglAPI = mapglRef.current;
       if (!mapglAPI || !isMounted) return;
 
-      routes.forEach((route, index) => {
+      routes.forEach((route: CoreRoute, index: number) => {
         const orderedWaypoints = [...(route.waypoints ?? [])].sort(
           (a, b) => a.order - b.order
         );
-        const routeColor =
+        const routeColor: string =
           colorById.get(route.route_id) ??
           ROUTE_COLORS[index % ROUTE_COLORS.length];
         const mode = toTransportMode(route, requestMode);

@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/store/useAuthStore';
 
-const API_URL = 'http://localhost:8001';
+
 
 export const authService = {
     login: async (email: string, password: string) => {

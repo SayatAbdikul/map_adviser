@@ -7,215 +7,150 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  * Format duration in minutes to human-readable string
  */
 const formatDuration = (minutes: number | null | undefined): string => {
-  if (minutes === null || minutes === undefined) return 'неизвестно';
-  if (minutes < 1) return 'меньше минуты';
-  if (minutes < 60) return `${Math.round(minutes)} мин`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = Math.round(minutes % 60);
-  if (remainingMinutes === 0) return `${hours} ч`;
-  return `${hours} ч ${remainingMinutes} мин`;
+    if (minutes === null || minutes === undefined) return 'неизвестно';
+    if (minutes < 1) return 'меньше минуты';
+    if (minutes < 60) return `${Math.round(minutes)} мин`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = Math.round(minutes % 60);
+    if (remainingMinutes === 0) return `${hours} ч`;
+    return `${hours} ч ${remainingMinutes} мин`;
 };
 
 /**
  * Format distance in meters to human-readable string
  */
 const formatDistance = (meters: number | null | undefined): string => {
-  if (meters === null || meters === undefined) return 'неизвестно';
-  if (meters < 1000) return `${Math.round(meters)} м`;
-  return `${(meters / 1000).toFixed(1)} км`;
+    if (meters === null || meters === undefined) return 'неизвестно';
+    if (meters < 1000) return `${Math.round(meters)} м`;
+    return `${(meters / 1000).toFixed(1)} км`;
 };
 
 /**
  * Get transport mode display name
  */
 const getTransportModeDisplay = (mode: string | undefined): string => {
-  switch (mode) {
-    case 'driving': return '🚗 На машине';
-    case 'walking': return '🚶 Пешком';
-    case 'public_transport': return '🚌 На общественном транспорте';
-    default: return mode || 'неизвестно';
-  }
+    switch (mode) {
+        case 'driving': return '🚗 На машине';
+        case 'walking': return '🚶 Пешком';
+        case 'public_transport': return '🚌 На общественном транспорте';
+        default: return mode || 'неизвестно';
+    }
 };
 
 /**
  * Format route response into a readable chat message
  */
 const formatRouteMessage = (response: RouteResponse): string => {
-  const { request_summary, routes } = response;
-  
-  if (!routes || routes.length === 0) {
-    return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
-  }
+    // Handle the actual backend response format
+    const { places, route_url, total_distance, total_duration, gemini_explanation } = response;
 
-  const route = routes[0] as Route;
-  const lines: string[] = [];
-
-  // Header with intent
-  lines.push(`🗺️ ${request_summary.intent}`);
-  lines.push('');
-
-  // Route summary
-  lines.push(`📍 Маршрут: ${route.title}`);
-  lines.push(`📏 Расстояние: ${formatDistance(route.total_distance_meters)}`);
-  lines.push(`⏱️ Время в пути: ${formatDuration(route.total_duration_minutes)}`);
-  lines.push(getTransportModeDisplay(request_summary.transport_mode));
-  
-  // Public transport specific info
-  if (route.transport_chain) {
-    lines.push(`🚇 Маршрут: ${route.transport_chain}`);
-    if (route.transfer_count !== undefined) {
-      lines.push(`🔄 Пересадок: ${route.transfer_count}`);
+    if (!places || places.length === 0) {
+        return 'К сожалению, не удалось построить маршрут. Попробуйте уточнить запрос.';
     }
-    if (route.walking_duration_minutes !== undefined) {
-      lines.push(`🚶 Ходьба: ${formatDuration(route.walking_duration_minutes)}`);
-    }
-  }
 
-  // Time-based planning info
-  if (route.recommended_departure_time || route.estimated_arrival_time) {
+    const lines: string[] = [];
+
+    // Header with Gemini explanation
+    lines.push(`🗺️ ${gemini_explanation}`);
     lines.push('');
-    lines.push('🕐 Планирование по времени:');
-    if (route.recommended_departure_time) {
-      lines.push(`   🚀 Выезд: ${route.recommended_departure_time}`);
-    }
-    if (route.estimated_arrival_time) {
-      lines.push(`   🏁 Прибытие: ${route.estimated_arrival_time}`);
-    }
-  }
-  lines.push('');
 
-  // Waypoints
-  if (route.waypoints && route.waypoints.length > 0) {
-    lines.push('Маршрут проходит через:');
-    route.waypoints.forEach((wp, index) => {
-      const icon = wp.type === 'start' ? '🟢' : wp.type === 'end' ? '🔴' : '📍';
-      lines.push(`${icon} ${index + 1}. ${wp.name} (${wp.address})`);
+    // Route summary
+    const distanceKm = total_distance ? (total_distance / 1000).toFixed(1) : 'неизвестно';
+    const durationMin = total_duration ? Math.round(total_duration / 60) : null;
+
+    lines.push(`📍 Найдено мест: ${places.length}`);
+    lines.push(`📏 Общее расстояние: ${distanceKm} км`);
+    lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
+    lines.push('');
+
+    // Places list
+    lines.push('📍 Места для посещения:');
+    places.forEach((place, index) => {
+        lines.push(`${index + 1}. **${place.name}**`);
+        lines.push(`   📍 ${place.address}`);
     });
+
     lines.push('');
-  }
+    lines.push(`🗺️ [Открыть маршрут в 2GIS](${route_url})`);
 
-  // Turn-by-turn directions (show first few)
-  if (route.directions && route.directions.length > 0) {
-    lines.push('Основные повороты:');
-    const mainDirections = route.directions
-      .filter(d => d.instruction && d.type !== 'begin' && d.type !== 'end')
-      .slice(0, 5);
-    
-    mainDirections.forEach((dir) => {
-      if (dir.instruction) {
-        lines.push(`➡️ ${dir.instruction}`);
-      }
-    });
-    
-    if (route.directions.length > 5) {
-      lines.push(`... и ещё ${route.directions.length - 5} поворотов`);
-    }
-  }
-
-  // If multiple routes available
-  if (routes.length > 1) {
-    lines.push('');
-    lines.push(`📊 Также доступно ещё ${routes.length - 1} вариантов маршрута.`);
-  }
-
-  return lines.join('\n');
+    return lines.join('\n');
 };
 
 /**
  * Format error into a user-friendly message
  */
 const formatErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      console.log(error);
-      return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8001.';
+    if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8001.';
+        }
+        return `❌ Ошибка: ${error.message}`;
     }
-    return `❌ Ошибка: ${error.message}`;
-  }
-  return '❌ Произошла неизвестная ошибка. Попробуйте ещё раз.';
+    return '❌ Произошла неизвестная ошибка. Попробуйте ещё раз.';
 };
 
 export interface ChatServiceResponse {
-  message: Message;
-  routeData: RouteResponse | null;
+    message: Message;
+    routeData: RouteResponse | null;
 }
 
 export const chatService = {
-  /**
-   * Send a route query to the backend
-   */
-  sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
-    const requestBody: RouteRequest = {
-      query: text,
-      mode: mode,
-    };
+    /**
+     * Send a route query to the backend
+     */
+    sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
+        const requestBody = {
+            description: text,
+            city: 'astana',
+        };
 
-    try {
-      console.log(API_BASE_URL);
-      const response = await fetch(`${API_BASE_URL}/route`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      console.log('response', response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/plan-route`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+            console.log('response', response);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        const detail = typeof errorData === 'object' ? errorData.detail : null;
-        const rawResponse =
-          detail && typeof detail === 'object' && typeof detail.raw_response === 'string'
-            ? detail.raw_response.trim()
-            : '';
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                const errorMessage = typeof errorData.detail === 'string'
+                    ? errorData.detail
+                    : errorData.detail?.error || 'Request failed';
+                throw new Error(errorMessage);
+            }
 
-        if (rawResponse) {
-          return {
-            message: {
-              id: Date.now().toString(),
-              text: rawResponse,
-              sender: 'bot',
-              timestamp: Date.now(),
-            },
-            routeData: null,
-          };
+            const routeResponse: RouteResponse = await response.json();
+
+            return {
+                message: {
+                    id: Date.now().toString(),
+                    text: formatRouteMessage(routeResponse),
+                    sender: 'bot',
+                    timestamp: Date.now(),
+                },
+                routeData: routeResponse,
+            };
+        } catch (error) {
+            console.error('Chat service error:', error);
+            return {
+                message: {
+                    id: Date.now().toString(),
+                    text: formatErrorMessage(error),
+                    sender: 'bot',
+                    timestamp: Date.now(),
+                },
+                routeData: null,
+            };
         }
+    },
 
-        const errorMessage = typeof detail === 'string' 
-          ? detail 
-          : detail?.error || 'Request failed';
-        throw new Error(errorMessage);
-      }
-
-      const routeResponse: RouteResponse = await response.json();
-      
-      return {
-        message: {
-          id: Date.now().toString(),
-          text: formatRouteMessage(routeResponse),
-          sender: 'bot',
-          timestamp: Date.now(),
-        },
-        routeData: routeResponse,
-      };
-    } catch (error) {
-      console.error('Chat service error:', error);
-      return {
-        message: {
-          id: Date.now().toString(),
-          text: formatErrorMessage(error),
-          sender: 'bot',
-          timestamp: Date.now(),
-        },
-        routeData: null,
-      };
-    }
-  },
-
-  /**
-   * Format route for display (utility function)
-   */
-  formatRoute: formatRouteMessage,
-  formatDuration,
-  formatDistance,
+    /**
+     * Format route for display (utility function)
+     */
+    formatRoute: formatRouteMessage,
+    formatDuration,
+    formatDistance,
 };

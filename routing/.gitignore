@@ -9,7 +9,12 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
+
+# Downloaded packages
+*.whl
+*.tar.gz
 
 # IDE
 .vscode/

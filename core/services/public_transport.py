@@ -5,6 +5,8 @@ from typing import Literal, Optional
 
 import httpx
 
+from services.gis_rate_limiter import create_2gis_async_client
+
 PUBLIC_TRANSPORT_URL = "https://routing.api.2gis.com/public_transport/2.0"
 
 # Singleton instance for connection reuse
@@ -41,7 +43,7 @@ class GISPublicTransportClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or get_api_key()
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = create_2gis_async_client(timeout=30.0)
 
     async def close(self):
         """Close the HTTP client."""

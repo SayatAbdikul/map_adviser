@@ -163,9 +163,27 @@ export const chatService = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        const errorMessage = typeof errorData.detail === 'string' 
-          ? errorData.detail 
-          : errorData.detail?.error || 'Request failed';
+        const detail = typeof errorData === 'object' ? errorData.detail : null;
+        const rawResponse =
+          detail && typeof detail === 'object' && typeof detail.raw_response === 'string'
+            ? detail.raw_response.trim()
+            : '';
+
+        if (rawResponse) {
+          return {
+            message: {
+              id: Date.now().toString(),
+              text: rawResponse,
+              sender: 'bot',
+              timestamp: Date.now(),
+            },
+            routeData: null,
+          };
+        }
+
+        const errorMessage = typeof detail === 'string' 
+          ? detail 
+          : detail?.error || 'Request failed';
         throw new Error(errorMessage);
       }
 

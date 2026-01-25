@@ -76,3 +76,72 @@ export interface RouteRequest {
 export interface ApiError {
   detail: string | { error: string; raw_response?: string };
 }
+
+// ==================== Room Sync Types ====================
+
+export interface MemberLocation {
+  lat: number;
+  lon: number;
+  heading?: number | null;
+  accuracy?: number | null;
+  updated_at: number;
+}
+
+export interface RoomMember {
+  id: string;
+  nickname: string;
+  color: string;
+  is_host: boolean;
+  location?: MemberLocation;
+}
+
+export interface Room {
+  code: string;
+  name: string;
+  created_at: number;
+  members: RoomMember[];
+  member_count: number;
+}
+
+export interface RoomState extends Room {
+  your_id: string;
+  your_color: string;
+}
+
+// WebSocket message types
+export type WSMessageType = 
+  | 'room_state'
+  | 'member_joined'
+  | 'member_left'
+  | 'location_update'
+  | 'host_changed'
+  | 'heartbeat_ack'
+  | 'error';
+
+export interface WSMessage {
+  type: WSMessageType;
+  [key: string]: unknown;
+}
+
+export interface WSLocationUpdateMessage extends WSMessage {
+  type: 'location_update';
+  member_id: string;
+  location: MemberLocation;
+}
+
+export interface WSMemberJoinedMessage extends WSMessage {
+  type: 'member_joined';
+  member: RoomMember;
+  member_count: number;
+}
+
+export interface WSMemberLeftMessage extends WSMessage {
+  type: 'member_left';
+  member_id: string;
+  nickname: string;
+  member_count: number;
+}
+
+export interface WSRoomStateMessage extends WSMessage, RoomState {
+  type: 'room_state';
+}

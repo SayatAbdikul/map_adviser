@@ -6,6 +6,7 @@ import { useRouteStore } from '@/store/useRouteStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
 import { RouteDetailsPanel } from '../route/RouteDetailsPanel';
+import { RoomPanel, MemberMarkers } from '../room';
 
 const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
 const ROUTE_COLORS = ['#2563eb', '#f97316', '#16a34a'];
@@ -151,6 +152,8 @@ export const MapContainer: React.FC = () => {
       <RouteDetailsPanel />
       <MapControls />
       <MapMarkersComponent />
+      <RoomPanel />
+      {mapReady && mapRef.current && <MemberMarkers map={mapRef.current} />}
     </div>
   );
 };

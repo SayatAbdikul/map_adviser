@@ -1,7 +1,10 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Load .env from the same directory as this config file
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 DOUBLEGIS_API_KEY = os.getenv("DOUBLEGIS_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

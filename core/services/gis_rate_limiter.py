@@ -81,7 +81,7 @@ async def rate_limit_request(_: httpx.Request) -> None:
         await limiter.acquire()
 
 
-def create_2gis_async_client(timeout: float = 30.0) -> httpx.AsyncClient:
+def create_2gis_async_client(timeout: float = 90.0) -> httpx.AsyncClient:
     return httpx.AsyncClient(
         timeout=timeout,
         event_hooks={"request": [rate_limit_request]},

@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 from typing import List
 from config import GEMINI_API_KEY
 from models import Place
@@ -8,8 +8,8 @@ class GeminiService:
     """Service for interacting with Google's Gemini AI"""
     
     def __init__(self):
-        genai.configure(api_key=GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.model_name = 'gemini-2.0-flash'
     
     async def parse_user_request(self, description: str, city: str) -> List[str]:
         """
@@ -32,7 +32,10 @@ Examples: "italian restaurants", "art museums", "parks"
 
 Search terms:"""
         
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
         
         # Parse the response - expecting comma-separated values
         search_queries = [q.strip() for q in response.text.strip().split(',')]
@@ -72,7 +75,10 @@ SELECTED_IDS: id1,id2,id3,...
 EXPLANATION: Your explanation here
 """
         
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
         response_text = response.text.strip()
         
         # Parse the response
@@ -142,5 +148,8 @@ Estimated time: {duration_min:.0f} minutes
 
 Write a brief, enthusiastic description (2-3 sentences) of this route."""
         
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
         return response.text.strip()

@@ -45,8 +45,12 @@ class DoubleGISService:
             "fields": "items.point,items.address"
         }
         
+        print(f"DEBUG 2GIS: URL={url}, params={params}")
+        
         async with httpx.AsyncClient() as client:
             response = await client.get(url, params=params)
+            print(f"DEBUG 2GIS: Status={response.status_code}")
+            print(f"DEBUG 2GIS: Response text (first 500 chars)={response.text[:500]}")
             response.raise_for_status()
             data = response.json()
             

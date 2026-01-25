@@ -80,17 +80,28 @@ export const useAuthStore = create<AuthState>()(
             register: async (email: string, password: string, name: string) => {
                 set({ isLoading: true, error: null });
                 try {
+                    // Split name into first_name and last_name for backend
+                    const nameParts = name.trim().split(' ');
+                    const first_name = nameParts[0] || name;
+                    const last_name = nameParts.slice(1).join(' ') || '';
+                    const login = email.split('@')[0]; // Use email prefix as login
+
                     const response = await fetch('http://localhost:8001/auth/register', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password, name }),
+                        body: JSON.stringify({ email, password, login, first_name, last_name }),
                     });
 
                     if (!response.ok) {
                         let errorMessage = 'Registration failed';
                         try {
                             const data = await response.json();
-                            errorMessage = data.detail || `Registration failed: ${response.status}`;
+                            // Handle FastAPI validation errors (array of objects with msg field)
+                            if (Array.isArray(data.detail)) {
+                                errorMessage = data.detail.map((err: any) => err.msg || String(err)).join(', ');
+                            } else {
+                                errorMessage = data.detail || `Registration failed: ${response.status}`;
+                            }
                         } catch {
                             errorMessage = `Registration failed: ${response.status} ${response.statusText}`;
                         }

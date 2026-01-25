@@ -1,9 +1,12 @@
 """2GIS Places API client for searching places and geocoding."""
 
+import logging
 import os
 from typing import Optional
 
 from services.gis_rate_limiter import create_2gis_async_client
+
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://catalog.api.2gis.com/3.0"
 GEOCODE_URL = "https://catalog.api.2gis.com/3.0/items/geocode"
@@ -48,6 +51,8 @@ class GISPlacesClient:
         """Close the HTTP client."""
         await self.client.aclose()
 
+
+
     async def geocode(
         self,
         address: str,
@@ -84,7 +89,9 @@ class GISPlacesClient:
             params["region_id"] = region_id
 
         response = await self.client.get(f"{BASE_URL}/items", params=params)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(f"Geocode API error: {response.status_code} - {response.text}")
+            return {"error": f"Geocode service error: {response.status_code}"}
         data = response.json()
 
         if not data.get("result", {}).get("items"):
@@ -189,7 +196,9 @@ class GISPlacesClient:
             params["region_id"] = region_id
 
         response = await self.client.get(f"{BASE_URL}/items", params=params)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(f"Search API error: {response.status_code} - {response.text}")
+            return []
         data = response.json()
         # print('response data', data)
 

@@ -1,9 +1,12 @@
 """2GIS Regions API client for searching and managing geographic regions."""
 
+import logging
 import os
 from typing import Optional
 
 from services.gis_rate_limiter import create_2gis_async_client
+
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://catalog.api.2gis.com/2.0"
 REGION_SEARCH_URL = f"{BASE_URL}/region/search"
@@ -56,6 +59,8 @@ class GISRegionsClient:
         """Close the HTTP client."""
         await self.client.aclose()
 
+
+
     async def search_by_name(
         self,
         query: str,
@@ -85,7 +90,9 @@ class GISRegionsClient:
             params["fields"] = "items.bounds"
 
         response = await self.client.get(REGION_SEARCH_URL, params=params)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(f"Region search API error: {response.status_code} - {response.text}")
+            return []
         data = response.json()
 
         regions = []
@@ -129,7 +136,9 @@ class GISRegionsClient:
         }
 
         response = await self.client.get(REGION_SEARCH_URL, params=params)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(f"Region coord search API error: {response.status_code} - {response.text}")
+            return None
         data = response.json()
 
         items = data.get("result", {}).get("items", [])
@@ -168,7 +177,9 @@ class GISRegionsClient:
             params["fields"] = "items.flags,items.statistics,items.bounds,items.time_zone"
 
         response = await self.client.get(REGION_GET_URL, params=params)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            logger.error(f"Region get API error: {response.status_code} - {response.text}")
+            return None
         data = response.json()
 
         items = data.get("result", {}).get("items", [])

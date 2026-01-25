@@ -1,9 +1,12 @@
 """2GIS Routing API client for calculating routes."""
 
+import logging
 import os
 from typing import Literal, Optional
 
 from services.gis_rate_limiter import create_2gis_async_client
+
+logger = logging.getLogger(__name__)
 
 ROUTING_URL = "https://routing.api.2gis.com/routing/7.0.0/global"
 
@@ -89,7 +92,21 @@ class GISRoutingClient:
             params=params,
             json=payload,
         )
-        response.raise_for_status()
+        
+        if response.status_code == 429:
+            logger.error("Rate limited by routing API")
+            return {
+                "error": "Rate limited by routing service. Please try again in a few minutes.",
+                "status_code": 429
+            }
+        
+        if response.status_code >= 400:
+            logger.error(f"Routing API error: {response.status_code} - {response.text}")
+            return {
+                "error": f"Routing service error: {response.status_code}",
+                "details": response.text
+            }
+        
         data = response.json()
 
         if not data.get("result"):

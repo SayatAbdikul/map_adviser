@@ -1,10 +1,134 @@
 import React from 'react';
 import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
-import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn } from 'lucide-react';
-import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint } from '@/types';
+import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn, Train, Bus, Footprints, ArrowRight } from 'lucide-react';
+import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement } from '@/types';
 
 const { formatDuration, formatDistance } = chatService;
+
+// Get icon for transport type
+const getMovementIcon = (movement: PublicTransportMovement) => {
+  if (movement.type === 'walkway' || movement.transport_type === 'walk') {
+    return <Footprints size={16} className="text-gray-600" />;
+  }
+  if (movement.transport_type === 'metro') {
+    return <Train size={16} className="text-purple-600" />;
+  }
+  if (movement.transport_type === 'bus' || movement.transport_type === 'trolleybus') {
+    return <Bus size={16} className="text-blue-600" />;
+  }
+  if (movement.transport_type === 'tram') {
+    return <Train size={16} className="text-green-600" />;
+  }
+  return <Bus size={16} className="text-gray-600" />;
+};
+
+// Get display name for transport type
+const getTransportTypeName = (movement: PublicTransportMovement): string => {
+  if (movement.type === 'walkway' || movement.transport_type === 'walk') {
+    return 'Пешком';
+  }
+  const typeMap: Record<string, string> = {
+    metro: 'Метро',
+    bus: 'Автобус',
+    trolleybus: 'Троллейбус',
+    tram: 'Трамвай',
+    shuttle_bus: 'Маршрутка',
+    suburban_train: 'Электричка',
+  };
+  return typeMap[movement.transport_type || ''] || movement.transport_type || 'Транспорт';
+};
+
+interface MovementDisplayProps {
+  movement: PublicTransportMovement;
+  isLast: boolean;
+  index: number;
+  isHighlighted: boolean;
+  onHover: (index: number | null) => void;
+}
+
+const MovementDisplay: React.FC<MovementDisplayProps> = ({ movement, isLast, index, isHighlighted, onHover }) => {
+  const durationMinutes = movement.duration_seconds / 60;
+  const isWalk = movement.type === 'walkway' || movement.transport_type === 'walk';
+  const lineColor = movement.line_color || movement.route_color;
+
+  return (
+    <div 
+      className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0 cursor-pointer transition-colors rounded-lg px-2 -mx-2 ${
+        isHighlighted ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+      }`}
+      onMouseEnter={() => onHover(index)}
+      onMouseLeave={() => onHover(null)}
+    >
+      {/* Icon and connector line */}
+      <div className="flex flex-col items-center">
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${isHighlighted ? 'scale-110' : ''}`}
+          style={{
+            backgroundColor: lineColor ? `${lineColor}20` : (isWalk ? '#f3f4f6' : '#eff6ff'),
+            borderColor: lineColor || (isWalk ? '#9ca3af' : '#3b82f6'),
+            borderWidth: isHighlighted ? '3px' : '2px'
+          }}
+        >
+          {getMovementIcon(movement)}
+        </div>
+        {!isLast && <div className="w-0.5 h-8 bg-gray-200 mt-1" style={lineColor && !isWalk ? { backgroundColor: lineColor } : {}} />}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Transport type and route name */}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm text-gray-900">
+            {getTransportTypeName(movement)}
+          </span>
+          {(movement.line_name || movement.route_name) && (
+            <span
+              className="px-2 py-0.5 rounded text-xs font-medium text-white"
+              style={{ backgroundColor: lineColor || '#3b82f6' }}
+            >
+              {movement.line_name || movement.route_name}
+            </span>
+          )}
+        </div>
+
+        {/* From/To stops */}
+        {(movement.from_stop || movement.to_stop) && (
+          <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
+            <span className="truncate">{movement.from_stop || movement.from_name}</span>
+            <ArrowRight size={12} className="flex-shrink-0 text-gray-400" />
+            <span className="truncate">{movement.to_stop}</span>
+          </div>
+        )}
+
+        {/* Direction hint for metro */}
+        {movement.direction && (
+          <div className="text-xs text-gray-500 mt-1">
+            Направление: {movement.direction}
+          </div>
+        )}
+
+        {/* Stats: distance, time, stops */}
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <Clock size={12} />
+            {formatDuration(durationMinutes)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Route size={12} />
+            {formatDistance(movement.distance_meters)}
+          </span>
+          {movement.stops_count !== undefined && movement.stops_count > 0 && (
+            <span className="flex items-center gap-1">
+              📍 {movement.stops_count} {movement.stops_count === 1 ? 'остановка' :
+                  movement.stops_count < 5 ? 'остановки' : 'остановок'}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface SegmentDisplayProps {
   segment: RouteSegmentInfo;
@@ -72,7 +196,7 @@ const RouteVariantButton: React.FC<RouteVariantButtonProps> = ({ route, index, i
 };
 
 export const RouteDetailsPanel: React.FC = () => {
-  const { routeResponse, selectedRouteIndex, setSelectedRouteIndex, clearRoute } = useRouteStore();
+  const { routeResponse, selectedRouteIndex, setSelectedRouteIndex, clearRoute, highlightedMovementIndex, setHighlightedMovementIndex } = useRouteStore();
 
   if (!routeResponse?.routes?.length) {
     return null;
@@ -201,20 +325,40 @@ export const RouteDetailsPanel: React.FC = () => {
           <div className="mt-3 p-3 bg-white rounded-lg border border-gray-100">
             <div className="text-xs text-gray-500 mb-1">Маршрут транспорта:</div>
             <div className="text-sm font-medium text-gray-900">{selectedRoute.transport_chain}</div>
-            <div className="flex gap-4 mt-2 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
               {selectedRoute.transfer_count !== undefined && (
                 <span>🔄 Пересадок: {selectedRoute.transfer_count}</span>
               )}
               {selectedRoute.walking_duration_minutes !== undefined && (
                 <span>🚶 Пешком: {formatDuration(selectedRoute.walking_duration_minutes)}</span>
               )}
+              {selectedRoute.schedule?.departure_time && (
+                <span>🕐 Отправление: {selectedRoute.schedule.departure_time}</span>
+              )}
+              {selectedRoute.schedule?.period_minutes && (
+                <span>⏱️ Интервал: {selectedRoute.schedule.period_minutes} мин</span>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Segments list */}
-      {displaySegments.length > 0 && displaySegments.some(s => s.distance_meters > 0 || s.duration_seconds > 0) ? (
+      {/* Public transport movements */}
+      {selectedRoute.movements && selectedRoute.movements.length > 0 ? (
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <div className="text-xs text-gray-500 mb-2">Этапы маршрута: <span className="text-gray-400">(наведите для подсветки на карте)</span></div>
+          {selectedRoute.movements.map((movement, index) => (
+            <MovementDisplay
+              key={`movement-${index}`}
+              movement={movement}
+              index={index}
+              isLast={index === selectedRoute.movements!.length - 1}
+              isHighlighted={highlightedMovementIndex === index}
+              onHover={setHighlightedMovementIndex}
+            />
+          ))}
+        </div>
+      ) : displaySegments.length > 0 && displaySegments.some(s => s.distance_meters > 0 || s.duration_seconds > 0) ? (
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <div className="text-xs text-gray-500 mb-2">Сегменты маршрута:</div>
           {displaySegments.map((segment, index) => (

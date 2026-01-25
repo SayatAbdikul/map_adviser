@@ -33,6 +33,37 @@ export interface RouteSegmentInfo {
   color?: string;
 }
 
+// Public transport movement (segment) details
+export interface PublicTransportMovement {
+  type: 'walkway' | 'passage' | 'transfer';
+  subtype?: string;
+  transport_type?: string; // 'metro', 'bus', 'tram', 'walk', etc.
+  duration_seconds: number;
+  distance_meters: number;
+  // Stop information
+  from_name?: string;
+  from_stop?: string;
+  to_stop?: string;
+  stops_count?: number;
+  // Transport details
+  line_name?: string;
+  line_color?: string;
+  route_name?: string;
+  route_color?: string;
+  direction?: string;
+  station_count?: string;
+  // Geometry for map display
+  geometry?: [number, number][];
+}
+
+// Schedule information for public transport
+export interface PublicTransportSchedule {
+  type?: string;
+  period_minutes?: number;
+  departure_time?: string;
+  start_time_utc?: number;
+}
+
 export interface Route {
   route_id: number;
   title: string;
@@ -46,6 +77,8 @@ export interface Route {
   transport_chain?: string;
   transfer_count?: number;
   walking_duration_minutes?: number;
+  movements?: PublicTransportMovement[]; // Detailed movement segments
+  schedule?: PublicTransportSchedule; // Schedule information
   // Time-based planning
   recommended_departure_time?: string; // "HH:MM"
   estimated_arrival_time?: string; // "HH:MM"

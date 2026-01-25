@@ -5,12 +5,14 @@ interface RouteState {
   // Current route data
   routeResponse: RouteResponse | null;
   selectedRouteIndex: number;
+  highlightedMovementIndex: number | null; // For segment highlighting on hover
   isLoading: boolean;
   error: string | null;
 
   // Actions
   setRouteResponse: (response: RouteResponse | null) => void;
   setSelectedRouteIndex: (index: number) => void;
+  setHighlightedMovementIndex: (index: number | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearRoute: () => void;
@@ -24,14 +26,16 @@ interface RouteState {
 export const useRouteStore = create<RouteState>((set, get) => ({
   routeResponse: null,
   selectedRouteIndex: 0,
+  highlightedMovementIndex: null,
   isLoading: false,
   error: null,
 
   setRouteResponse: (response) => set({ routeResponse: response, error: null }),
   setSelectedRouteIndex: (index) => set({ selectedRouteIndex: index }),
+  setHighlightedMovementIndex: (index) => set({ highlightedMovementIndex: index }),
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error, isLoading: false }),
-  clearRoute: () => set({ routeResponse: null, selectedRouteIndex: 0, error: null }),
+  clearRoute: () => set({ routeResponse: null, selectedRouteIndex: 0, highlightedMovementIndex: null, error: null }),
 
   getSelectedRoute: () => {
     const state = get();

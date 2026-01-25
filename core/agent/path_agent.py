@@ -97,6 +97,23 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
       "transport_chain": "Walk → Metro → Bus → Walk" (только для public_transport),
       "transfer_count": Число пересадок (только для public_transport),
       "walking_duration_minutes": Число минут ходьбы (только для public_transport),
+      "movements": [ // ОБЯЗАТЕЛЬНО для public_transport - копируй из результата calculate_public_transport_route
+        {
+          "type": "walkway | passage | transfer",
+          "transport_type": "walk | metro | bus | tram | trolleybus",
+          "duration_seconds": 300,
+          "distance_meters": 500,
+          "from_name": "Название начальной точки",
+          "from_stop": "Название остановки посадки",
+          "to_stop": "Название остановки высадки",
+          "line_name": "Название линии метро",
+          "line_color": "#00FF00",
+          "route_name": "Номер маршрута (25, 101)",
+          "route_color": "#FF0000",
+          "geometry": [[lon1, lat1], [lon2, lat2], ...] // КРИТИЧНО для отрисовки сегментов на карте
+        },
+        ...
+      ],
       "waypoints": [
         {
           "order": 1,
@@ -159,12 +176,23 @@ SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся 
   - duration_seconds: Время до следующего маневра
 - segments: Информация о каждом сегменте маршрута между точками остановки
 
+ВАЖНО ДЛЯ ОБЩЕСТВЕННОГО ТРАНСПОРТА:
+- movements: ОБЯЗАТЕЛЬНО копируй массив movements из результата calculate_public_transport_route. Каждый элемент должен содержать:
+  - type: тип сегмента (walkway, passage, transfer)
+  - transport_type: вид транспорта (walk, metro, bus, tram, trolleybus)
+  - geometry: массив координат [lon, lat] для отрисовки этого сегмента на карте - КРИТИЧНО!
+  - line_color/route_color: цвет линии для отображения на карте
+  - from_stop, to_stop: названия остановок
+  - duration_seconds, distance_meters: время и расстояние сегмента
+- route_geometry: Общая геометрия маршрута из поля route_geometry результата API
+
 ПРАВИЛА ГЕНЕРАЦИИ:
 1. Если пользователь дает неточный адрес (например, только улицу), выбери наиболее вероятные координаты или центр улицы.
 2. Для категорий ("аптека", "магазин") подбирай реально существующие или правдоподобные места в радиусе от предыдущей точки.
 3. Координаты (lat, lon) обязательны для каждой точки, чтобы фронтенд мог поставить маркеры.
 4. Поле title должно коротко объяснять, чем этот маршрут отличается (например, "Через центр", "Минимальная ходьба").
-5. Всегда включай route_geometry и directions из результата calculate_route - это критично для отображения маршрута на карте."""
+5. Для driving/walking: включай route_geometry и directions из результата calculate_route.
+6. Для public_transport: ОБЯЗАТЕЛЬНО включай movements с geometry из calculate_public_transport_route - без этого маршрут не отобразится на карте!"""
 
 # SYSTEM_PROMPT = """You are a path planning assistant that helps users find optimal routes through multiple locations.
 

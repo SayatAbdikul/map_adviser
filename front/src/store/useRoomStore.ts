@@ -14,6 +14,7 @@ interface RoomStore {
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
+  isManualLocationMode: boolean;
   
   // WebSocket
   ws: WebSocket | null;
@@ -25,6 +26,7 @@ interface RoomStore {
   leaveRoom: () => void;
   updateMyLocation: (location: Omit<MemberLocation, 'updated_at'>) => void;
   setError: (error: string | null) => void;
+  setManualLocationMode: (enabled: boolean) => void;
   
   // Internal
   _handleMessage: (event: MessageEvent) => void;
@@ -42,6 +44,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   isConnected: false,
   isConnecting: false,
   error: null,
+  isManualLocationMode: false,
   ws: null,
   heartbeatInterval: null,
   
@@ -198,6 +201,8 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   },
   
   setError: (error) => set({ error }),
+  
+  setManualLocationMode: (enabled) => set({ isManualLocationMode: enabled }),
   
   // Handle incoming WebSocket messages
   _handleMessage: (event) => {

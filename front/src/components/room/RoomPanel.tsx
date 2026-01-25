@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Share2, Copy, Check, MapPin, X, LogOut, UserPlus } from 'lucide-react';
+import { Users, Share2, Copy, Check, MapPin, X, LogOut, UserPlus, MousePointer, Navigation } from 'lucide-react';
 import { useRoomStore } from '@/store/useRoomStore';
 
 export const RoomPanel: React.FC = () => {
@@ -11,11 +11,13 @@ export const RoomPanel: React.FC = () => {
     isConnected,
     isConnecting,
     error,
+    isManualLocationMode,
     createRoom,
     joinRoom,
     leaveRoom,
     updateMyLocation,
     setError,
+    setManualLocationMode,
   } = useRoomStore();
 
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -68,12 +70,12 @@ export const RoomPanel: React.FC = () => {
     };
   }, [watchId]);
 
-  // Auto-start tracking when joining a room
+  // Reset manual mode when leaving room
   useEffect(() => {
-    if (isConnected && !isTracking) {
-      toggleTracking();
+    if (!isConnected) {
+      setManualLocationMode(false);
     }
-  }, [isConnected]);
+  }, [isConnected, setManualLocationMode]);
 
   const handleCreateRoom = async () => {
     const defaultNickname = nickname.trim() || `User_${Math.floor(Math.random() * 1000)}`;
@@ -254,17 +256,45 @@ export const RoomPanel: React.FC = () => {
         </div>
         
         {/* Location tracking status */}
-        <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+          <div className="text-xs text-gray-500 font-medium mb-1">Set Your Location</div>
+          
+          {/* GPS Tracking button */}
           <button
-            onClick={toggleTracking}
-            className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              isTracking
+            onClick={() => {
+              if (isManualLocationMode) {
+                setManualLocationMode(false);
+              }
+              toggleTracking();
+            }}
+            className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              isTracking && !isManualLocationMode
                 ? 'bg-green-100 text-green-700 hover:bg-green-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <MapPin size={12} className="inline mr-1" />
-            {isTracking ? 'Sharing Location' : 'Start Sharing'}
+            <Navigation size={12} />
+            {isTracking && !isManualLocationMode ? 'GPS Active' : 'Use GPS'}
+          </button>
+          
+          {/* Manual location button */}
+          <button
+            onClick={() => {
+              if (isTracking && watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                setWatchId(null);
+                setIsTracking(false);
+              }
+              setManualLocationMode(!isManualLocationMode);
+            }}
+            className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+              isManualLocationMode
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 ring-2 ring-blue-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <MousePointer size={12} />
+            {isManualLocationMode ? 'Click map to set location...' : 'Set on Map'}
           </button>
           
           {myLocation && (

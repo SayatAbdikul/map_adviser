@@ -3,6 +3,7 @@ import { load } from '@2gis/mapgl';
 import { Map as MapGL, Polyline } from '@2gis/mapgl/types';
 import { useMapStore } from '@/store/useMapStore';
 import { useRouteStore } from '@/store/useRouteStore';
+import { useRoomStore } from '@/store/useRoomStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
 import { RouteDetailsPanel } from '../route/RouteDetailsPanel';
@@ -19,6 +20,7 @@ export const MapContainer: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const { setMapInstance, setCenter, setZoom, centeryb, zoom } = useMapStore();
   const { routeResponse, selectedRouteIndex } = useRouteStore();
+  const { isManualLocationMode, isConnected, updateMyLocation, setManualLocationMode } = useRoomStore();
 
   // Initialize map
   useEffect(() => {
@@ -64,6 +66,33 @@ export const MapContainer: React.FC = () => {
       }
     };
   }, []);
+
+  // Handle map clicks for manual location mode
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    const handleMapClick = (e: { lngLat: number[] }) => {
+      if (isManualLocationMode && isConnected) {
+        const [lon, lat] = e.lngLat;
+        updateMyLocation({
+          lat,
+          lon,
+          heading: null,
+          accuracy: null,
+        });
+        // Turn off manual mode after setting location
+        setManualLocationMode(false);
+      }
+    };
+
+    mapRef.current.on('click', handleMapClick as (ev: unknown) => void);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off('click', handleMapClick as (ev: unknown) => void);
+      }
+    };
+  }, [mapReady, isManualLocationMode, isConnected, updateMyLocation, setManualLocationMode]);
 
   // Render route when routeResponse changes
   useEffect(() => {
@@ -148,7 +177,17 @@ export const MapContainer: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-gray-200">
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div 
+        ref={mapContainerRef} 
+        className={`w-full h-full ${isManualLocationMode ? 'cursor-crosshair' : ''}`} 
+      />
+      {isManualLocationMode && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
+          <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium animate-pulse">
+            Click anywhere to set your location
+          </div>
+        </div>
+      )}
       <RouteDetailsPanel />
       <MapControls />
       <MapMarkersComponent />

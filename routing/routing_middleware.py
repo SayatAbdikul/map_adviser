@@ -129,7 +129,7 @@ class RoutingMiddleware:
             "type": mode_map.get(request.mode, "pedestrian")
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             try:
                 response = await client.post(url, params=params, json=body)
                 
@@ -186,7 +186,7 @@ class RoutingMiddleware:
             "targets": targets
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             try:
                 response = await client.post(url, params=params, json=body)
                 
@@ -304,7 +304,7 @@ class RoutingMiddleware:
             "transport": transport_types
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             try:
                 response = await client.post(url, params=params, json=body)
                 

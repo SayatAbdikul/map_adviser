@@ -316,14 +316,14 @@ export const MapContainer: React.FC = () => {
   }, [mapReady, routeResponse, selectedRouteIndex, highlightedMovementIndex]);
 
   return (
-    <div className="relative w-full h-full bg-gray-200">
+    <div className="relative w-full h-full app-surface-2">
       <div 
         ref={mapContainerRef} 
         className={`w-full h-full ${isManualLocationMode ? 'cursor-crosshair' : ''}`} 
       />
       {isManualLocationMode && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
-          <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium animate-pulse">
+        <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <div className="rounded-full app-accent px-4 py-2 text-sm font-medium app-shadow animate-pulse">
             Click anywhere to set your location
           </div>
         </div>

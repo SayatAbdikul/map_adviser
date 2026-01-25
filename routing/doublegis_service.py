@@ -100,7 +100,7 @@ class DoubleGISService:
             "targets": targets
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             try:
                 response = await client.post(url, params=params, json=json_body)
                 

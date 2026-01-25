@@ -119,7 +119,7 @@ async def test_routing_api_formats():
         },
     ]
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         for endpoint in endpoints_to_try:
             print(f"\n--- Testing: {endpoint['name']} ---")
             print(f"URL: {endpoint['url']}")

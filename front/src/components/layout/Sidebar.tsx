@@ -135,9 +135,9 @@ export const Sidebar: React.FC = () => {
           {/* Footer */}
           <div className="p-4 border-t app-border app-surface-2">
             <div className="text-xs text-center app-muted">
-              © 2024 Map Adviser
+              © 2026 Map Adviser
               <br />
-              Powered by 2GIS
+              Powered by Competitive Vibecoders
             </div>
           </div>
         </div>

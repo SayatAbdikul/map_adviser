@@ -11,6 +11,7 @@ import {
   useThemeStore,
 } from '@/store/useThemeStore';
 import { Button } from '@/components/common/Button';
+import { useDraggablePanel } from '@/hooks/useDraggablePanel';
 
 const MOOD_META: Record<
   ThemeMood,
@@ -77,6 +78,10 @@ const buildThemeTokens = (mood: ThemeMood, accent: ThemeAccent, contrast: ThemeC
 export const ThemePanel: React.FC = () => {
   const { mood, accent, contrast, setMood, setAccent, setContrast, resetTheme, randomizeTheme } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
+  const { panelRef, position, startDrag, didDrag, ensureInView } = useDraggablePanel({
+    anchor: 'bottom-right',
+    offset: 24,
+  });
 
   const tokens = useMemo(
     () => buildThemeTokens(mood, accent, contrast),
@@ -90,14 +95,30 @@ export const ThemePanel: React.FC = () => {
     });
   }, [tokens]);
 
+  useEffect(() => {
+    ensureInView();
+  }, [isOpen, ensureInView]);
+
   const recipeLabel = `${MOOD_META[mood].label} / ${ACCENT_META[accent].label} / ${CONTRAST_META[contrast].label}`;
 
   return (
-    <div className="fixed left-3 bottom-24 z-30 flex flex-col items-start sm:left-6 sm:bottom-6">
+    <div
+      ref={panelRef}
+      className="fixed z-30 flex flex-col items-start"
+      style={{
+        left: position?.x ?? 0,
+        top: position?.y ?? 0,
+        visibility: position ? 'visible' : 'hidden',
+      }}
+    >
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="group flex items-center gap-3 rounded-full border app-border app-surface px-3 py-2 text-sm font-medium app-shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-[var(--app-shadow)]"
+        onPointerDown={startDrag}
+        onClick={() => {
+          if (didDrag()) return;
+          setIsOpen((prev) => !prev);
+        }}
+        className="group flex items-center gap-3 rounded-full border app-border app-surface px-3 py-2 text-sm font-medium app-shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-[var(--app-shadow)] cursor-grab active:cursor-grabbing touch-none select-none"
         aria-expanded={isOpen}
       >
         <span
@@ -118,7 +139,7 @@ export const ThemePanel: React.FC = () => {
 
       <div
         className={twMerge(
-          'mt-3 w-[min(92vw,360px)] origin-bottom-left transition-all duration-300',
+          'mt-3 w-[min(92vw,360px)] origin-bottom-right transition-all duration-300',
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none translate-y-2 scale-95 opacity-0'

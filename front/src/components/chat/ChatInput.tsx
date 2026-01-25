@@ -52,7 +52,7 @@ export const ChatInput: React.FC = () => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = navigator.language || 'ru-RU';
+    recognition.lang = 'ru-RU';
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;

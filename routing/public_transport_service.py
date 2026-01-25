@@ -67,7 +67,7 @@ class PublicTransportService:
             "transport": transport_modes
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(url, params=params, json=body)
             
             if response.status_code == 200:
@@ -297,7 +297,7 @@ async def compare_transport_modes():
         }
     
     # Walking and Bicycle via carrouting API
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         # Walking
         response = await client.post(
             f"{DOUBLEGIS_ROUTING_URL}/carrouting/6.0.0/global",

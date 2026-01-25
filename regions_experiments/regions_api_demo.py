@@ -10,7 +10,7 @@ The Regions API provides information about geographic regions supported by 2GIS,
 including cities, countries, and administrative divisions.
 
 Author: API Demo Suite
-Date: 2024
+Date: 2026
 """
 
 import requests

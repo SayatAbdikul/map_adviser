@@ -1,115 +1,118 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AlertCircle, Lock, Mail } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/common/Button';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Card } from '@/components/common/Card';
+import { Input } from '@/components/common/Input';
 
 export const LoginPage: React.FC = () => {
-    const navigate = useNavigate();
-    const { login, isLoading, error, setError } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isLoading, error, setError } = useAuthStore();
 
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-    });
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value,
-        }));
-        if (error) setError(null);
-    };
+  const from = (location.state as { from?: string } | null)?.from || '/map';
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    if (error) setError(null);
+  };
 
-        if (!formData.email || !formData.password) {
-            setError('Please fill in all fields');
-            return;
-        }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-        try {
-            await login(formData.email, formData.password);
-            navigate('/');
-        } catch {
-            // Error is already set by the store
-        }
-    };
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      return;
+    }
 
-    return (
-        <div className= "min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center px-4" >
-        <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md" >
-            <div className="text-center mb-8" >
-                <h1 className="text-3xl font-bold text-gray-800" > Map Adviser </h1>
-                    < p className = "text-gray-600 mt-2" > Sign in to your account </p>
-                        </div>
+    try {
+      await login(formData.email, formData.password);
+      navigate(from, { replace: true });
+    } catch {
+      // Error is already set by the store
+    }
+  };
 
-    {
-        error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2" >
-                <AlertCircle size={ 20 } />
-        { error }
+  return (
+    <div className="relative flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--app-accent-soft),_transparent_65%)] opacity-60" />
+      <div className="relative grid w-full max-w-5xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+        <div className="space-y-5">
+          <div className="text-xs uppercase tracking-[0.4em] app-muted">Welcome back</div>
+          <h1 className="font-display text-3xl app-text sm:text-4xl">Sign in to your route console.</h1>
+          <p className="text-sm app-muted sm:text-base">
+            Access saved routes, collaborative rooms, and live map intelligence.
+          </p>
+          <div className="flex items-center gap-3 text-sm">
+            <Link to="/" className="app-muted hover:text-[color:var(--app-text)] transition-colors">
+              Back to landing
+            </Link>
+          </div>
         </div>
-                )}
 
-<form onSubmit={ handleSubmit } className = "space-y-4" >
-    <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2" >
-        Email Address
-            </label>
-            < div className = "relative" >
-                <Mail className="absolute left-3 top-3 text-gray-400" size = { 20} />
-                    <input
-                                type="email"
-name = "email"
-value = { formData.email }
-onChange = { handleChange }
-placeholder = "Enter your email"
-className = "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-disabled = { isLoading }
-    />
-    </div>
-    </div>
+        <Card className="relative w-full max-w-md justify-self-center p-6 sm:p-8">
+          <div className="space-y-2 text-center">
+            <div className="text-xs uppercase tracking-[0.3em] app-muted">Map Adviser</div>
+            <h2 className="font-display text-2xl app-text">Welcome back</h2>
+            <p className="text-sm app-muted">Enter your credentials to continue.</p>
+          </div>
 
-    < div >
-    <label className="block text-sm font-medium text-gray-700 mb-2" >
-        Password
-        </label>
-        < div className = "relative" >
-            <Lock className="absolute left-3 top-3 text-gray-400" size = { 20} />
-                <input
-                                type="password"
-name = "password"
-value = { formData.password }
-onChange = { handleChange }
-placeholder = "Enter your password"
-className = "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-disabled = { isLoading }
-    />
-    </div>
-    </div>
+          {error && (
+            <div className="mt-6 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <AlertCircle size={18} />
+              {error}
+            </div>
+          )}
 
-    < Button
-type = "submit"
-variant = "primary"
-className = "w-full"
-disabled = { isLoading }
-    >
-    { isLoading? 'Signing in...': 'Sign In' }
-    </Button>
-    </form>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <Input
+              label="Email address"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="you@example.com"
+              leftIcon={<Mail size={18} />}
+              disabled={isLoading}
+            />
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              leftIcon={<Lock size={18} />}
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              isLoading={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </form>
 
-    < div className = "mt-6 text-center" >
-        <p className="text-gray-600 text-sm" >
-            Don't have an account?{' '}
-                < Link to = "/register" className = "text-blue-600 hover:underline font-semibold" >
-                    Sign up
-                        </Link>
-                        </p>
-                        </div>
-                        </div>
-                        </div>
-    );
+          <div className="mt-6 text-center text-sm app-muted">
+            New here?{' '}
+            <Link to="/register" className="font-semibold text-[color:var(--app-accent-strong)] hover:underline">
+              Create an account
+            </Link>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 };

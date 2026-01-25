@@ -3,6 +3,7 @@ import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
 import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn, Train, Bus, Footprints, ArrowRight } from 'lucide-react';
 import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement } from '@/types';
+import { useDraggablePanel } from '@/hooks/useDraggablePanel';
 
 const { formatDuration, formatDistance } = chatService;
 
@@ -197,6 +198,10 @@ const RouteVariantButton: React.FC<RouteVariantButtonProps> = ({ route, index, i
 
 export const RouteDetailsPanel: React.FC = () => {
   const { routeResponse, selectedRouteIndex, setSelectedRouteIndex, clearRoute, highlightedMovementIndex, setHighlightedMovementIndex } = useRouteStore();
+  const { panelRef, position, startDrag } = useDraggablePanel({
+    anchor: 'top-left',
+    offset: 16,
+  });
 
   if (!routeResponse?.routes?.length) {
     return null;
@@ -229,9 +234,20 @@ export const RouteDetailsPanel: React.FC = () => {
   };
 
   return (
-    <div className="absolute top-4 left-4 z-30 w-80 max-h-[calc(100vh-180px)] app-surface rounded-xl app-shadow border app-border overflow-hidden flex flex-col">
+    <div
+      ref={panelRef}
+      className="fixed z-30 w-80 max-h-[calc(100vh-180px)] app-surface rounded-xl app-shadow border app-border overflow-hidden flex flex-col"
+      style={{
+        left: position?.x ?? 0,
+        top: position?.y ?? 0,
+        visibility: position ? 'visible' : 'hidden',
+      }}
+    >
       {/* Header */}
-      <div className="px-4 py-3 app-accent flex items-center justify-between">
+      <div
+        className="px-4 py-3 app-accent flex items-center justify-between cursor-grab active:cursor-grabbing touch-none select-none"
+        onPointerDown={startDrag}
+      >
         <div className="flex items-center gap-2">
           <MapPin size={18} />
           <span className="font-semibold text-sm">Детали маршрута</span>
@@ -239,6 +255,7 @@ export const RouteDetailsPanel: React.FC = () => {
         <button
           type="button"
           onClick={clearRoute}
+          onPointerDown={(event) => event.stopPropagation()}
           className="p-1 hover:bg-[color:var(--app-accent-strong)] rounded-lg transition-colors"
         >
           <X size={18} />

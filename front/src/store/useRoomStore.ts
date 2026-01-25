@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomMember, MemberLocation, RoomState, WSMessage } from '@/types';
+import type { RoomMember, MemberLocation, RoomState, WSMessage, ChatMessage, ChatRouteData } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
@@ -16,6 +16,11 @@ interface RoomStore {
   error: string | null;
   isManualLocationMode: boolean;
   
+  // Chat state
+  chatMessages: ChatMessage[];
+  isAgentTyping: boolean;
+  activeRouteData: ChatRouteData | null;
+  
   // WebSocket
   ws: WebSocket | null;
   heartbeatInterval: NodeJS.Timeout | null;
@@ -27,6 +32,10 @@ interface RoomStore {
   updateMyLocation: (location: Omit<MemberLocation, 'updated_at'>) => void;
   setError: (error: string | null) => void;
   setManualLocationMode: (enabled: boolean) => void;
+  
+  // Chat actions
+  sendChatMessage: (content: string) => void;
+  clearActiveRoute: () => void;
   
   // Internal
   _handleMessage: (event: MessageEvent) => void;
@@ -45,6 +54,12 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   isConnecting: false,
   error: null,
   isManualLocationMode: false,
+  
+  // Chat state
+  chatMessages: [],
+  isAgentTyping: false,
+  activeRouteData: null,
+  
   ws: null,
   heartbeatInterval: null,
   
@@ -163,6 +178,10 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       myLocation: null,
       isConnected: false,
       error: null,
+      // Clear chat state
+      chatMessages: [],
+      isAgentTyping: false,
+      activeRouteData: null,
     });
   },
   
@@ -204,6 +223,19 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   
   setManualLocationMode: (enabled) => set({ isManualLocationMode: enabled }),
   
+  // Chat actions
+  sendChatMessage: (content: string) => {
+    const { ws, isConnected } = get();
+    if (ws && isConnected && content.trim()) {
+      ws.send(JSON.stringify({
+        type: 'room_chat',
+        content: content.trim(),
+      }));
+    }
+  },
+  
+  clearActiveRoute: () => set({ activeRouteData: null }),
+  
   // Handle incoming WebSocket messages
   _handleMessage: (event) => {
     try {
@@ -211,7 +243,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
       
       switch (data.type) {
         case 'room_state': {
-          const roomState = data as unknown as RoomState & { type: string };
+          const roomState = data as unknown as RoomState & { type: string; chat_messages?: ChatMessage[] };
           const membersMap = new Map<string, RoomMember>();
           roomState.members.forEach((m: RoomMember) => membersMap.set(m.id, m));
           
@@ -220,6 +252,8 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
             members: membersMap,
             myId: roomState.your_id,
             myColor: roomState.your_color,
+            // Load existing chat messages
+            chatMessages: roomState.chat_messages || [],
           });
           break;
         }
@@ -280,6 +314,25 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
             });
             return { members: newMembers };
           });
+          break;
+        }
+        
+        case 'room_chat_message': {
+          const payload = data as unknown as { message: ChatMessage };
+          const { message } = payload;
+          set((state) => ({
+            chatMessages: [...state.chatMessages, message],
+            // If this is an agent response with route data, set it as active
+            activeRouteData: message.is_agent_response && message.route_data 
+              ? message.route_data 
+              : state.activeRouteData,
+          }));
+          break;
+        }
+        
+        case 'agent_typing': {
+          const payload = data as unknown as { is_typing: boolean };
+          set({ isAgentTyping: payload.is_typing });
           break;
         }
         

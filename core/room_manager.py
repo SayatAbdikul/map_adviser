@@ -7,6 +7,7 @@ import asyncio
 import random
 import string
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 from fastapi import WebSocket
@@ -23,6 +24,9 @@ MEMBER_COLORS = [
     "#8b5cf6",  # violet
     "#ec4899",  # pink
 ]
+
+# Max chat messages to keep in room history
+MAX_CHAT_MESSAGES = 50
 
 
 def generate_room_code(length: int = 6) -> str:
@@ -47,6 +51,19 @@ class MemberLocation:
 
 
 @dataclass
+class ChatMessage:
+    """A chat message in a room."""
+    id: str
+    sender_id: str
+    sender_nickname: str
+    content: str
+    timestamp: float = field(default_factory=time.time)
+    is_agent_response: bool = False
+    # For agent responses, store the route data if any
+    route_data: Optional[dict] = None
+
+
+@dataclass
 class RoomMember:
     """A member in a room."""
     id: str
@@ -66,6 +83,7 @@ class Room:
     name: str
     created_at: float = field(default_factory=time.time)
     members: dict[str, RoomMember] = field(default_factory=dict)
+    chat_messages: list[ChatMessage] = field(default_factory=list)
     
     @property
     def member_count(self) -> int:
@@ -76,6 +94,20 @@ class Room:
             if member.is_host:
                 return member
         return None
+    
+    def add_chat_message(self, message: ChatMessage):
+        """Add a message to chat history, keeping only last N messages."""
+        self.chat_messages.append(message)
+        if len(self.chat_messages) > MAX_CHAT_MESSAGES:
+            self.chat_messages = self.chat_messages[-MAX_CHAT_MESSAGES:]
+    
+    def get_members_with_locations(self) -> list[tuple[RoomMember, MemberLocation]]:
+        """Get all members that have locations set."""
+        return [
+            (member, member.location)
+            for member in self.members.values()
+            if member.location is not None
+        ]
 
 
 class RoomManager:
@@ -298,6 +330,81 @@ class RoomManager:
         }
         await self._broadcast_to_room(room, message, exclude_member=member.id)
     
+    def _serialize_chat_message(self, msg: ChatMessage) -> dict:
+        """Serialize a chat message to dict."""
+        return {
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "sender_nickname": msg.sender_nickname,
+            "content": msg.content,
+            "timestamp": msg.timestamp,
+            "is_agent_response": msg.is_agent_response,
+            "route_data": msg.route_data,
+        }
+    
+    async def add_user_chat_message(
+        self, 
+        room: Room, 
+        sender_id: str, 
+        content: str
+    ) -> ChatMessage:
+        """Add a user chat message and broadcast to all members."""
+        member = room.members.get(sender_id)
+        if not member:
+            raise ValueError(f"Member {sender_id} not found in room")
+        
+        message = ChatMessage(
+            id=str(uuid.uuid4()),
+            sender_id=sender_id,
+            sender_nickname=member.nickname,
+            content=content,
+            is_agent_response=False,
+        )
+        room.add_chat_message(message)
+        
+        # Broadcast to all members
+        broadcast_msg = {
+            "type": "room_chat_message",
+            "message": self._serialize_chat_message(message),
+        }
+        await self._broadcast_to_room(room, broadcast_msg)
+        
+        return message
+    
+    async def add_agent_chat_message(
+        self,
+        room: Room,
+        content: str,
+        route_data: Optional[dict] = None,
+    ) -> ChatMessage:
+        """Add an agent response message and broadcast to all members."""
+        message = ChatMessage(
+            id=str(uuid.uuid4()),
+            sender_id="agent",
+            sender_nickname="Маршрутный помощник",
+            content=content,
+            is_agent_response=True,
+            route_data=route_data,
+        )
+        room.add_chat_message(message)
+        
+        # Broadcast to all members
+        broadcast_msg = {
+            "type": "room_chat_message",
+            "message": self._serialize_chat_message(message),
+        }
+        await self._broadcast_to_room(room, broadcast_msg)
+        
+        return message
+    
+    async def broadcast_agent_typing(self, room: Room, is_typing: bool):
+        """Broadcast agent typing status to all members."""
+        message = {
+            "type": "agent_typing",
+            "is_typing": is_typing,
+        }
+        await self._broadcast_to_room(room, message)
+    
     def get_room_state(self, room: Room) -> dict:
         """Get the full state of a room for a newly joined member."""
         members = []
@@ -324,6 +431,9 @@ class RoomManager:
             "created_at": room.created_at,
             "members": members,
             "member_count": room.member_count,
+            "chat_messages": [
+                self._serialize_chat_message(msg) for msg in room.chat_messages
+            ],
         }
 
 

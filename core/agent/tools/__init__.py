@@ -17,6 +17,11 @@ from agent.tools.public_transport import (
     calculate_public_transport_route,
     IntermediatePoint,
 )
+from agent.tools.meeting_place import (
+    find_meeting_place,
+    find_meeting_place_impl,
+    MemberLocation,
+)
 
 __all__ = [
     "geocode_address",
@@ -29,4 +34,7 @@ __all__ = [
     "validate_location_in_region",
     "calculate_public_transport_route",
     "IntermediatePoint",
+    "find_meeting_place",
+    "find_meeting_place_impl",
+    "MemberLocation",
 ]

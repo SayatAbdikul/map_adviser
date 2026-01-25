@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Share2, Copy, Check, MapPin, X, LogOut, UserPlus, MousePointer, Navigation } from 'lucide-react';
+import { Users, Share2, Copy, Check, MapPin, X, LogOut, UserPlus, MousePointer, Navigation, MessageCircle } from 'lucide-react';
 import { useRoomStore } from '@/store/useRoomStore';
+import { RoomChat } from './RoomChat';
 
 export const RoomPanel: React.FC = () => {
   const {
@@ -12,6 +13,7 @@ export const RoomPanel: React.FC = () => {
     isConnecting,
     error,
     isManualLocationMode,
+    chatMessages,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -27,6 +29,18 @@ export const RoomPanel: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [lastReadCount, setLastReadCount] = useState(0);
+
+  // Track unread messages
+  const unreadCount = isChatOpen ? 0 : Math.max(0, chatMessages.length - lastReadCount);
+
+  // Update last read count when chat is opened
+  useEffect(() => {
+    if (isChatOpen) {
+      setLastReadCount(chatMessages.length);
+    }
+  }, [isChatOpen, chatMessages.length]);
 
   // Start/stop location tracking
   const toggleTracking = useCallback(() => {
@@ -303,7 +317,26 @@ export const RoomPanel: React.FC = () => {
             </div>
           )}
         </div>
+        
+        {/* Chat button */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="w-full py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-medium flex items-center justify-center gap-2 relative"
+          >
+            <MessageCircle size={16} />
+            Найти место встречи
+            {unreadCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Room Chat */}
+      <RoomChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
       {/* Share Modal */}
       {showShareModal && (

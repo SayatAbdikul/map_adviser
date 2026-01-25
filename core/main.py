@@ -1,5 +1,6 @@
 """FastAPI application for the path finding agent."""
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -9,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from agent.path_agent import plan_route
+from agent.room_chat_agent import process_room_chat
 from models.schemas import ErrorResponse, RouteRequest, RouteResponse
-from room_manager import room_manager
+from room_manager import room_manager, Room, RoomMember
 from services.gis_places import close_places_client
 from services.gis_routing import close_routing_client
 
@@ -111,6 +113,34 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+
+# ==================== Room Chat Helper ====================
+
+async def _handle_room_chat_agent(room: Room, query: str):
+    """Process a room chat query with the AI agent and broadcast results."""
+    try:
+        # Notify room that agent is typing
+        await room_manager.broadcast_agent_typing(room, True)
+        
+        # Process the chat message
+        result = await process_room_chat(room, query)
+        
+        # Broadcast the agent response
+        await room_manager.add_agent_chat_message(
+            room=room,
+            content=result.get("response", "Не удалось обработать запрос"),
+            route_data=result.get("route_data"),
+        )
+    except Exception as e:
+        # Send error message
+        await room_manager.add_agent_chat_message(
+            room=room,
+            content=f"Ошибка при обработке запроса: {str(e)}",
+        )
+    finally:
+        # Notify that agent stopped typing
+        await room_manager.broadcast_agent_typing(room, False)
 
 
 # ==================== Room Sync API ====================
@@ -216,6 +246,18 @@ async def websocket_room(websocket: WebSocket, code: str, nickname: str = "Anony
             elif msg_type == "heartbeat":
                 await room_manager.heartbeat(room, member.id)
                 await websocket.send_json({"type": "heartbeat_ack"})
+            
+            elif msg_type == "room_chat":
+                # Handle room chat message
+                content = data.get("content", "").strip()
+                if content:
+                    # Add user message to chat
+                    await room_manager.add_user_chat_message(room, member.id, content)
+                    
+                    # Process with AI agent in background
+                    asyncio.create_task(
+                        _handle_room_chat_agent(room, content)
+                    )
             
             else:
                 await websocket.send_json({

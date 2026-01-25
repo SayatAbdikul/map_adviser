@@ -20,7 +20,9 @@ class UserRegister(BaseModel):
     """User registration request"""
     email: str
     password: str
-    name: str
+    login: str
+    first_name: str
+    last_name: str
 
 
 class UserLogin(BaseModel):
@@ -35,14 +37,17 @@ class TokenResponse(BaseModel):
     token_type: str
     user_id: int
     email: str
-    name: str
+    login: str
+    name: str  # Combined first_name + last_name
 
 
 class UserInfo(BaseModel):
     """User information"""
     id: int
     email: str
-    name: str
+    login: str
+    first_name: str
+    last_name: str
     avatar_url: Optional[str] = None
 
 
@@ -76,8 +81,10 @@ async def register(user_data: UserRegister):
     try:
         response = supabase.table("users").insert({
             "email": user_data.email,
-            "password_hash": password_hash,
-            "name": user_data.name,
+            "password": password_hash,
+            "login": user_data.login,
+            "first_name": user_data.first_name,
+            "last_name": user_data.last_name,
         }).execute()
         
         if not response.data:
@@ -93,7 +100,8 @@ async def register(user_data: UserRegister):
             token_type="bearer",
             user_id=user["id"],
             email=user["email"],
-            name=user["name"]
+            login=user["login"],
+            name=f"{user['first_name']} {user['last_name']}"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
@@ -118,7 +126,7 @@ async def login(credentials: UserLogin):
         user = response.data[0]
         
         # Verify password
-        if not AuthService.verify_password(credentials.password, user["password_hash"]):
+        if not AuthService.verify_password(credentials.password, user["password"]):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
         # Create JWT token
@@ -129,7 +137,8 @@ async def login(credentials: UserLogin):
             token_type="bearer",
             user_id=user["id"],
             email=user["email"],
-            name=user["name"]
+            login=user["login"],
+            name=f"{user['first_name']} {user['last_name']}"
         )
     except HTTPException:
         raise

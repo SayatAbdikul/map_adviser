@@ -12,17 +12,19 @@ from routing_middleware import (
     get_directions
 )
 
-# Optional Gemini service (requires google-generativeai package)
+# Optional Gemini service (requires google-generativeai package which needs grpc)
 try:
     from gemini_service import GeminiService
     GEMINI_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     GEMINI_AVAILABLE = False
     GeminiService = None
-from gemini_service import GeminiService
+    print("Warning: Gemini service not available (grpc not installed)")
+
 # from database import db
 from chat_service import ChatService
 from auth_models import MessageCreate, MessageResponse, MessageListResponse
+from auth_endpoints import router as auth_router
 
 app = FastAPI(
     title="AI Route Planner",
@@ -38,6 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth routes (router already has /auth prefix)
+app.include_router(auth_router, tags=["auth"])
 
 # Initialize services
 doublegis_service = DoubleGISService()

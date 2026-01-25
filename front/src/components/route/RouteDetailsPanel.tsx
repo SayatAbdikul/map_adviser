@@ -2,13 +2,9 @@ import React from 'react';
 import { useRouteStore } from '@/store/useRouteStore';
 import { chatService } from '@/services/chatService';
 import { Clock, Route, MapPin, ChevronRight, X, CalendarClock, LogOut, LogIn, Train, Bus, Footprints, ArrowRight } from 'lucide-react';
-<<<<<<< Updated upstream
-import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement } from '@/types';
-import { useDraggablePanel } from '@/hooks/useDraggablePanel';
-=======
 import type { Route as RouteType, RouteSegmentInfo, RouteWaypoint, PublicTransportMovement, CoreRoute } from '@/types';
 import { isCoreAgentResponse } from '@/types';
->>>>>>> Stashed changes
+import { useDraggablePanel } from '@/hooks/useDraggablePanel';
 
 const { formatDuration, formatDistance } = chatService;
 

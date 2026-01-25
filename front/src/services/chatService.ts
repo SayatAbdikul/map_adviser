@@ -1,8 +1,6 @@
 import { API_BASE_URL, buildApiUrl } from '@/constants';
 import type { Message } from '@/store/useChatStore';
-import type { RouteResponse, LegacyRouteResponse, CoreAgentResponse } from '@/types';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import type { CoreAgentResponse, LegacyRouteResponse, RouteRequest, RouteResponse } from '@/types';
 
 /**
  * Type guard to check if response is the new core agent format
@@ -40,6 +38,25 @@ const formatDistance = (meters: number | null | undefined): string => {
     return `${(meters / 1000).toFixed(1)} км`;
 };
 
+const formatTransportMode = (mode: string | null | undefined): string | null => {
+    if (!mode) return null;
+    const labels: Record<string, string> = {
+        driving: 'на машине',
+        walking: 'пешком',
+        public_transport: 'общественный транспорт',
+    };
+    return labels[mode] || mode;
+};
+
+const formatOptimizationChoice = (choice: string | null | undefined): string | null => {
+    if (!choice) return null;
+    const labels: Record<string, string> = {
+        distance: 'по расстоянию',
+        time: 'по времени',
+    };
+    return labels[choice] || choice;
+};
+
 /**
  * Format route response into a readable chat message
  */
@@ -53,26 +70,47 @@ const formatRouteMessage = (response: RouteResponse): string => {
         }
 
         const lines: string[] = [];
-        const firstRoute = routes[0];
-        const waypoints = firstRoute.waypoints || [];
-        
-        // Header
+        const summary = response.request_summary;
+
         lines.push('🗺️ Маршрут построен успешно!');
+        if (summary?.intent) {
+            lines.push(`🎯 ${summary.intent}`);
+        }
+        if (summary?.origin_address) {
+            lines.push(`📍 Старт: ${summary.origin_address}`);
+        }
+        const modeLabel = formatTransportMode(summary?.transport_mode);
+        if (modeLabel) {
+            lines.push(`🧭 Режим: ${modeLabel}`);
+        }
+        const optimizationLabel = formatOptimizationChoice(summary?.optimization_choice);
+        if (optimizationLabel) {
+            lines.push(`⚙️ Оптимизация: ${optimizationLabel}`);
+        }
+        if (summary?.arrival_time) {
+            lines.push(`⏰ Время прибытия: ${summary.arrival_time}`);
+        }
+        if (summary?.departure_time) {
+            lines.push(`🕒 Рекомендуемое отправление: ${summary.departure_time}`);
+        }
+
         lines.push('');
 
-        // Route summary
-        const distanceKm = firstRoute.total_distance_meters ? (firstRoute.total_distance_meters / 1000).toFixed(1) : 'неизвестно';
-        const durationMin = firstRoute.total_duration_minutes || null;
+        const primaryRoute = routes[0];
+        const waypoints = [...(primaryRoute.waypoints || [])].sort(
+            (a, b) => a.order - b.order
+        );
 
-        lines.push(`📏 Общее расстояние: ${distanceKm} км`);
-        lines.push(`⏱️ Время в пути: ${formatDuration(durationMin)}`);
+        lines.push(`🛣️ ${primaryRoute.title || 'Основной маршрут'}`);
+        lines.push(`📏 Общее расстояние: ${formatDistance(primaryRoute.total_distance_meters ?? null)}`);
+        lines.push(`⏱️ Время в пути: ${formatDuration(primaryRoute.total_duration_minutes ?? null)}`);
         
-        if (firstRoute.transport_chain) {
-            lines.push(`🚌 Транспорт: ${firstRoute.transport_chain}`);
+        if (primaryRoute.transport_chain) {
+            lines.push(`🚌 ${primaryRoute.transport_chain}`);
         }
         
-        if (firstRoute.transfer_count !== undefined) {
-            lines.push(`🔄 Пересадок: ${firstRoute.transfer_count}`);
+        if (primaryRoute.transfer_count !== undefined) {
+            lines.push(`🔄 Пересадок: ${primaryRoute.transfer_count}`);
         }
         
         lines.push('');
@@ -80,23 +118,21 @@ const formatRouteMessage = (response: RouteResponse): string => {
         // Waypoints list
         if (waypoints.length > 0) {
             lines.push('📍 Точки маршрута:');
-            waypoints.forEach((waypoint) => {
-                const typeIcon = waypoint.type === 'start' ? '🟢' : waypoint.type === 'end' ? '🔴' : '📍';
-                lines.push(`${typeIcon} **${waypoint.name}**`);
-                if (waypoint.address) {
-                    lines.push(`   📍 ${waypoint.address}`);
-                }
+            waypoints.forEach((waypoint, index) => {
+                const name = waypoint.name || `Точка ${index + 1}`;
+                const address = waypoint.address ? ` — ${waypoint.address}` : '';
+                lines.push(`${index + 1}. ${name}${address}`);
             });
         }
 
         // Show route options if multiple
         if (routes.length > 1) {
             lines.push('');
-            lines.push('🗺️ Доступные варианты маршрута:');
+            lines.push('🗺️ Варианты маршрута:');
             routes.forEach((route, index) => {
-                const distKm = route.total_distance_meters ? (route.total_distance_meters / 1000).toFixed(1) : '?';
-                const durMin = route.total_duration_minutes || '?';
-                lines.push(`${index + 1}. ${route.title || `Вариант ${index + 1}`} - ${distKm} км, ${durMin} мин`);
+                const distance = formatDistance(route.total_distance_meters ?? null);
+                const duration = formatDuration(route.total_duration_minutes ?? null);
+                lines.push(`${index + 1}. ${route.title || `Вариант ${index + 1}`} — ${distance}, ${duration}`);
             });
         }
 

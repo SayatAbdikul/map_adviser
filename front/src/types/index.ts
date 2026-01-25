@@ -115,10 +115,7 @@ export interface LegacyRouteResponse {
 // New core agent response format
 export interface CoreAgentResponse {
     routes: CoreRoute[];
-    request_summary?: {
-        optimization_choice?: string;
-        transport_mode?: string;
-    };
+    request_summary?: RequestSummary;
 }
 
 export interface CoreRoute {

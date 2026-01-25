@@ -24,7 +24,6 @@ except (ImportError, ModuleNotFoundError):
 # from database import db
 from chat_service import ChatService
 from auth_models import MessageCreate, MessageResponse, MessageListResponse
-from auth_endpoints import router as auth_router
 
 app = FastAPI(
     title="AI Route Planner",
@@ -41,8 +40,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include auth routes (router already has /auth prefix)
-app.include_router(auth_router, tags=["auth"])
 
 # Initialize services
 doublegis_service = DoubleGISService()

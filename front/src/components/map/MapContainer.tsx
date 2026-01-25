@@ -98,13 +98,12 @@ export const MapContainer: React.FC = () => {
     // Second pass: draw selected route on top with solid color
     if (selectedRoute.route_geometry && selectedRoute.route_geometry.length > 1) {
       const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
-        coordinates: route.route_geometry,
-        width: isSelected ? 7 : 5,
-        color,
-        zIndex: isSelected ? 3 : 1,
+        coordinates: selectedRoute.route_geometry,
+        width: 7,
+        color: ROUTE_COLORS[selectedRouteIndex % ROUTE_COLORS.length],
       });
       routeRefs.current.push(polyline);
-    });
+    }
 
     // Fit map to show all waypoints
     if (selectedRoute.waypoints && selectedRoute.waypoints.length > 1) {

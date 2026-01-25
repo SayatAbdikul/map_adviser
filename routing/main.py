@@ -108,8 +108,6 @@ async def plan_route(request: PlaceRequest):
             request.city
         )
         
-        print(f"DEBUG: Search queries from Gemini: {search_queries}")
-        
         if not search_queries:
             raise HTTPException(
                 status_code=400, 
@@ -119,9 +117,7 @@ async def plan_route(request: PlaceRequest):
         # Step 2: Search for places using 2GIS
         all_places = []
         for query in search_queries:
-            print(f"DEBUG: Searching 2GIS for: '{query}' in {request.city}")
             places = await doublegis_service.search_places(query, request.city, limit=5)
-            print(f"DEBUG: Found {len(places)} places")
             all_places.extend(places)
         
         if not all_places:

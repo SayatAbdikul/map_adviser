@@ -72,6 +72,9 @@ class Route(BaseModel):
     transport_chain: Optional[str] = None  # e.g., "Walk → Metro → Bus → Walk"
     transfer_count: Optional[int] = None
     walking_duration_minutes: Optional[float] = None
+    # Time-based planning fields
+    recommended_departure_time: Optional[str] = None  # e.g., "08:15"
+    estimated_arrival_time: Optional[str] = None  # e.g., "09:00"
 
 
 class RequestSummary(BaseModel):
@@ -81,6 +84,8 @@ class RequestSummary(BaseModel):
     intent: str
     transport_mode: Optional[str] = None  # "driving", "walking", "public_transport"
     optimization_choice: Optional[str] = None  # "time" or "distance"
+    arrival_time: Optional[str] = None  # Desired arrival time (e.g., "09:00", "14:30")
+    departure_time: Optional[str] = None  # Calculated/specified departure time
 
 
 class RouteResponse(BaseModel):

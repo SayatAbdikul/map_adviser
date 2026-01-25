@@ -5,6 +5,7 @@ import { useMapStore } from '@/store/useMapStore';
 import { useRouteStore } from '@/store/useRouteStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
+import { RouteDetailsPanel } from '../route/RouteDetailsPanel';
 
 const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
 const ROUTE_COLORS = ['#2563eb', '#f97316', '#16a34a'];
@@ -80,18 +81,22 @@ export const MapContainer: React.FC = () => {
     const selectedRoute = routes[selectedRouteIndex] || routes[0];
     if (!selectedRoute) return;
 
-    const colorById = new Map(
-      routes.map((route, index) => [route.route_id, ROUTE_COLORS[index % ROUTE_COLORS.length]])
-    );
-    const orderedRoutes = [
-      ...routes.filter((_, index) => index !== selectedRouteIndex),
-      selectedRoute,
-    ];
+    // Draw all route geometries - non-selected first (transparent), then selected (solid)
+    // First pass: draw non-selected routes with transparent color (using RGBA)
+    routeResponse.routes.forEach((route, index) => {
+      if (index === selectedRouteIndex) return; // Skip selected route for now
+      if (route.route_geometry && route.route_geometry.length > 1) {
+        const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
+          coordinates: route.route_geometry,
+          width: 5,
+          color: 'rgba(37, 99, 235, 0.35)',
+        });
+        routeRefs.current.push(polyline);
+      }
+    });
 
-    orderedRoutes.forEach((route) => {
-      if (!route.route_geometry || route.route_geometry.length <= 1) return;
-      const isSelected = route.route_id === selectedRoute.route_id;
-      const color = colorById.get(route.route_id) ?? ROUTE_COLORS[0];
+    // Second pass: draw selected route on top with solid color
+    if (selectedRoute.route_geometry && selectedRoute.route_geometry.length > 1) {
       const polyline = new mapglRef.current!.Polyline(mapRef.current!, {
         coordinates: route.route_geometry,
         width: isSelected ? 7 : 5,
@@ -144,6 +149,7 @@ export const MapContainer: React.FC = () => {
   return (
     <div className="relative w-full h-full bg-gray-200">
       <div ref={mapContainerRef} className="w-full h-full" />
+      <RouteDetailsPanel />
       <MapControls />
       <MapMarkersComponent />
     </div>

@@ -75,6 +75,7 @@ async def create_route(request: RouteRequest):
     }
     ```
     """
+    print('request', request)
     try:
         result = await plan_route(
             query=request.query,

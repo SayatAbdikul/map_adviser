@@ -51,7 +51,7 @@ export const ChatDrawer: React.FC = () => {
   return (
     <div
       className={twMerge(
-        'fixed bottom-0 left-0 z-40 w-full bg-white shadow-2xl transition-all duration-300 ease-in-out rounded-t-2xl'
+        'fixed bottom-0 left-0 z-40 w-full app-surface app-shadow transition-all duration-300 ease-in-out rounded-t-2xl border-t app-border'
       )}
       style={{ height: sheetHeight }}
       onTouchStart={handleTouchStart}
@@ -62,13 +62,13 @@ export const ChatDrawer: React.FC = () => {
           className="flex items-center justify-center py-2 cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}
         >
-          <div className="h-1.5 w-14 rounded-full bg-gray-300" />
+          <div className="h-1.5 w-14 rounded-full bg-[color:var(--app-border)]" />
         </div>
 
         {isOpen ? (
           <>
             <div
-              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-blue-600 text-white rounded-t-2xl"
+              className="flex items-center justify-between px-4 py-3 border-b app-border app-accent rounded-t-2xl"
               onClick={toggleChat}
             >
               <div className="flex items-center space-x-2">
@@ -87,14 +87,14 @@ export const ChatDrawer: React.FC = () => {
                     }
                     toggleChat();
                   }}
-                  className="text-white hover:bg-blue-700 h-8 w-8 p-0"
+                  className="text-[color:var(--app-accent-contrast)] hover:bg-[color:var(--app-accent-strong)] h-8 w-8 p-0"
                 >
                   <Minus size={20} />
                 </Button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
+            <div className="flex-1 overflow-hidden relative flex flex-col app-surface-2">
               <MessageList />
               <ChatInput />
             </div>
@@ -104,7 +104,7 @@ export const ChatDrawer: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 px-4 py-3 text-left text-gray-600 shadow-sm"
+              className="w-full flex items-center justify-between gap-3 rounded-2xl border app-border px-4 py-3 text-left app-muted app-shadow-soft"
             >
               <span className="text-sm">Ask about a route or place...</span>
               <ChevronUp size={18} />

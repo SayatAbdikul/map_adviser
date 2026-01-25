@@ -173,33 +173,33 @@ export const MapMarkersComponent: React.FC = () => {
 
   return (
     <div className="absolute left-4 top-4 z-20 w-72">
-      <Card className="shadow-lg border border-gray-200">
+      <Card className="app-shadow">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-gray-900">
+            <div className="text-sm font-semibold app-text">
               {activeWaypoint.waypoint.name}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs app-muted mt-1">
               {activeWaypoint.waypoint.address}
             </div>
           </div>
           <button
             type="button"
             onClick={() => setActiveWaypoint(null)}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-[color:var(--app-muted)] hover:text-[color:var(--app-text)]"
             aria-label="Close"
           >
             <X size={16} />
           </button>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+        <div className="mt-3 flex items-center gap-2 text-xs text-[color:var(--app-muted)]">
           <span
             className="inline-flex h-2 w-2 rounded-full"
             style={{ backgroundColor: activeWaypoint.routeColor }}
           />
           <span>{activeWaypoint.route.title}</span>
         </div>
-        <div className="mt-2 text-xs text-gray-600 flex items-center gap-2">
+        <div className="mt-2 text-xs text-[color:var(--app-muted)] flex items-center gap-2">
           <span
             className="inline-flex h-2 w-2 rounded-full"
             style={{ backgroundColor: modeAccent.color }}
@@ -208,7 +208,7 @@ export const MapMarkersComponent: React.FC = () => {
         </div>
         {activeWaypoint.waypoint.category && (
           <div className="mt-2">
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+            <span className="inline-flex items-center rounded-full bg-[color:var(--app-surface-2)] px-2 py-0.5 text-xs font-medium text-[color:var(--app-muted)]">
               {activeWaypoint.waypoint.category}
             </span>
           </div>

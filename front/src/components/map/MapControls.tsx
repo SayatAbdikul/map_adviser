@@ -31,12 +31,12 @@ export const MapControls: React.FC = () => {
 
   return (
     <div className="absolute bottom-8 right-4 flex flex-col space-y-2 z-10">
-      <div className="flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="flex flex-col app-surface rounded-lg app-shadow border app-border overflow-hidden">
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={handleZoomIn}
-          className="rounded-none border-b border-gray-100 h-10 w-10 p-0"
+          className="rounded-none border-b border-[color:var(--app-border)] h-10 w-10 p-0"
         >
           <Plus size={20} />
         </Button>

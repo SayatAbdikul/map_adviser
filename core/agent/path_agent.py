@@ -14,9 +14,90 @@ logger = logging.getLogger(__name__)
 from services.gis_places import get_places_client
 from services.gis_routing import get_routing_client
 from services.gis_regions import get_regions_client
+from services.public_transport import get_public_transport_client
 
 # Configure LiteLLM
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash")
+
+DISTANCE_KEYWORDS = [
+    "shortest",
+    "short",
+    "closest",
+    "near",
+    "distance",
+    "короч",
+    "кратчай",
+    "ближ",
+    "экон",
+]
+TIME_KEYWORDS = [
+    "fast",
+    "quick",
+    "asap",
+    "urgent",
+    "hurry",
+    "быстр",
+    "сроч",
+    "скорее",
+    "время",
+]
+
+
+def choose_optimization(query: str) -> Literal["distance", "time"]:
+    """Prefer shortest path unless query explicitly asks for speed."""
+    lower = query.lower()
+    if any(keyword in lower for keyword in TIME_KEYWORDS):
+        return "time"
+    if any(keyword in lower for keyword in DISTANCE_KEYWORDS):
+        return "distance"
+    return "distance"
+
+
+def extract_route_points(route: dict) -> list[tuple[float, float]]:
+    """Extract ordered (lon, lat) points from route waypoints."""
+    waypoints = route.get("waypoints") or []
+    if not isinstance(waypoints, list):
+        return []
+    ordered = sorted(waypoints, key=lambda w: w.get("order", 0))
+    points: list[tuple[float, float]] = []
+    for waypoint in ordered:
+        location = waypoint.get("location") or {}
+        lon = location.get("lon", waypoint.get("lon"))
+        lat = location.get("lat", waypoint.get("lat"))
+        if isinstance(lon, (int, float)) and isinstance(lat, (int, float)):
+            points.append((float(lon), float(lat)))
+    return points
+
+
+def apply_route_metrics(route: dict, route_result: dict) -> None:
+    """Overwrite geometry/metrics with routing API results."""
+    total_duration = route_result.get("total_duration")
+    route["route_geometry"] = route_result.get("geometry", [])
+    route["total_distance_meters"] = route_result.get("total_distance")
+    route["total_duration_minutes"] = round(total_duration / 60, 1) if total_duration else None
+
+    segments = []
+    for segment in route_result.get("segments", []) or []:
+        segments.append({
+            "from_waypoint": segment.get("from"),
+            "to_waypoint": segment.get("to"),
+            "distance_meters": segment.get("distance"),
+            "duration_seconds": segment.get("duration"),
+        })
+    if segments:
+        route["segments"] = segments
+
+    directions = []
+    for maneuver in route_result.get("maneuvers", []) or []:
+        directions.append({
+            "instruction": maneuver.get("instruction", ""),
+            "type": maneuver.get("type", ""),
+            "street_name": maneuver.get("street_name", ""),
+            "distance_meters": maneuver.get("distance"),
+            "duration_seconds": maneuver.get("duration"),
+        })
+    if directions:
+        route["directions"] = directions
 
 
 SYSTEM_PROMPT = """Ты — AI-агент, специализирующийся на гео-навигации и логистике. Твоя задача — анализировать запрос пользователя, извлекать точки маршрута (адреса и категории мест) и составлять оптимальные маршруты.
@@ -480,6 +561,7 @@ async def execute_tool(name: str, arguments: dict) -> dict:
 
     try:
         if name == "geocode_address":
+            logger.info('geocode_address called with', arguments)
             result = await places_client.geocode(
                 arguments["address"],
                 arguments.get("city"),
@@ -489,6 +571,7 @@ async def execute_tool(name: str, arguments: dict) -> dict:
             return result
 
         elif name == "search_nearby_places":
+            logger.info('search_nearby_places called with', arguments)
             location = None
             if "longitude" in arguments and "latitude" in arguments:
                 location = (arguments["longitude"], arguments["latitude"])
@@ -604,7 +687,7 @@ async def execute_tool(name: str, arguments: dict) -> dict:
                 intermediate_points=intermediate_points,
                 transport_types=arguments.get("transport_types"),
                 locale=arguments.get("locale", "en"),
-                include_pedestrian_instructions=False,
+                include_pedestrian_instructions=True,
             )
             logger.info(f"calculate_public_transport_route result: {result}")
             return result
@@ -639,7 +722,7 @@ async def plan_route(
         "public_transport": "на общественном транспорте (автобус, метро, трамвай)"
     }
     mode_ru = mode_map.get(mode, "на машине")
-
+    logger.debug(query, mode)
     # Build mode-specific instructions
     if mode == "public_transport":
         mode_instructions = """Способ передвижения: на общественном транспорте
@@ -671,6 +754,7 @@ async def plan_route(
         )
 
         choice = response.choices[0]
+        logger.debug(choice)
         message = choice.message
         logger.info(f"LLM response - content: {message.content[:200] if message.content else 'None'}...")
         logger.info(f"LLM response - tool_calls: {message.tool_calls}")
@@ -685,7 +769,7 @@ async def plan_route(
         # If no tool calls, we have the final response
         if not message.tool_calls:
             response_text = message.content or ""
-            logger.info(f"Final response: {response_text[:500]}...")
+            logger.info(f"Final response: {response_text}...")
             break
 
         # Execute tool calls
@@ -720,6 +804,82 @@ async def plan_route(
         # Try to parse JSON
         result = json.loads(response_text)
         logger.info(f"Successfully parsed JSON response")
+        if mode != "public_transport":
+            routing_client = get_routing_client()
+            optimize = choose_optimization(query)
+            request_summary = result.get("request_summary") or {}
+            request_summary["optimization_choice"] = optimize
+            request_summary["transport_mode"] = mode
+            result["request_summary"] = request_summary
+
+            routes = result.get("routes") or []
+            for route in routes:
+                points = extract_route_points(route)
+                if len(points) < 2:
+                    continue
+                route_result = await routing_client.get_route(points, mode=mode, optimize=optimize)
+                if "error" in route_result:
+                    logger.warning(f"Routing API error for route {route.get('route_id')}: {route_result.get('error')}")
+                    continue
+                apply_route_metrics(route, route_result)
+        else:
+            public_transport_client = get_public_transport_client()
+            request_summary = result.get("request_summary") or {}
+            request_summary["transport_mode"] = mode
+            result["request_summary"] = request_summary
+
+            routes = result.get("routes") or []
+            for route in routes:
+                waypoints = route.get("waypoints") or []
+                if len(waypoints) < 2:
+                    continue
+                ordered = sorted(waypoints, key=lambda w: w.get("order", 0))
+                start = ordered[0]
+                end = ordered[-1]
+                start_loc = start.get("location") or {}
+                end_loc = end.get("location") or {}
+                start_point = (start_loc.get("lon"), start_loc.get("lat"))
+                end_point = (end_loc.get("lon"), end_loc.get("lat"))
+                if None in start_point or None in end_point:
+                    continue
+
+                intermediate_points = []
+                for waypoint in ordered[1:-1]:
+                    loc = waypoint.get("location") or {}
+                    lon = loc.get("lon")
+                    lat = loc.get("lat")
+                    if lon is None or lat is None:
+                        continue
+                    intermediate_points.append((lon, lat, waypoint.get("name", "Waypoint")))
+
+                pt_result = await public_transport_client.get_public_transport_route(
+                    source_point=(start_point[0], start_point[1]),
+                    target_point=(end_point[0], end_point[1]),
+                    source_name=start.get("name", "Start Point"),
+                    target_name=end.get("name", "End Point"),
+                    intermediate_points=intermediate_points or None,
+                    transport_types=None,
+                    locale="en",
+                    include_pedestrian_instructions=True,
+                )
+
+                alternatives = pt_result.get("routes") if isinstance(pt_result, dict) else None
+                if not alternatives:
+                    logger.warning("Public transport route had no alternatives for geometry enrichment.")
+                    continue
+
+                best = alternatives[0]
+                route["route_geometry"] = best.get("route_geometry", [])
+                if best.get("total_distance_meters") is not None:
+                    route["total_distance_meters"] = best.get("total_distance_meters")
+                if best.get("total_duration_seconds") is not None:
+                    route["total_duration_minutes"] = round(best.get("total_duration_seconds") / 60, 1)
+                if best.get("walking_duration_seconds") is not None:
+                    route["walking_duration_minutes"] = round(best.get("walking_duration_seconds") / 60, 1)
+                if best.get("transfer_count") is not None:
+                    route["transfer_count"] = best.get("transfer_count")
+                if best.get("transport_chain"):
+                    route["transport_chain"] = best.get("transport_chain")
         return result
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e}")

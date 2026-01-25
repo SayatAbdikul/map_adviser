@@ -75,7 +75,6 @@ async def create_route(request: RouteRequest):
     }
     ```
     """
-    print('request', request)
     try:
         result = await plan_route(
             query=request.query,
@@ -105,4 +104,4 @@ async def create_route(request: RouteRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

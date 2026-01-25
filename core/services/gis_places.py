@@ -191,6 +191,7 @@ class GISPlacesClient:
         response = await self.client.get(f"{BASE_URL}/items", params=params)
         response.raise_for_status()
         data = response.json()
+        # print('response data', data)
 
         items = data.get("result", {}).get("items", [])
 

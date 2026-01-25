@@ -109,3 +109,129 @@ export interface RouteRequest {
 export interface ApiError {
   detail: string | { error: string; raw_response?: string };
 }
+
+// ==================== Room Sync Types ====================
+
+export interface MemberLocation {
+  lat: number;
+  lon: number;
+  heading?: number | null;
+  accuracy?: number | null;
+  updated_at: number;
+}
+
+export interface RoomMember {
+  id: string;
+  nickname: string;
+  color: string;
+  is_host: boolean;
+  location?: MemberLocation;
+}
+
+export interface Room {
+  code: string;
+  name: string;
+  created_at: number;
+  members: RoomMember[];
+  member_count: number;
+}
+
+export interface RoomState extends Room {
+  your_id: string;
+  your_color: string;
+  chat_messages?: ChatMessage[];
+}
+
+// ==================== Room Chat Types ====================
+
+export interface ChatMessage {
+  id: string;
+  sender_id: string;
+  sender_nickname: string;
+  content: string;
+  timestamp: number;
+  is_agent_response: boolean;
+  route_data?: ChatRouteData | null;
+}
+
+export interface MeetingPlaceDestination {
+  name: string;
+  address: string;
+  coordinates: [number, number]; // [lon, lat]
+}
+
+export interface MemberTravelTime {
+  member_id: string;
+  member_nickname: string;
+  duration_seconds: number | null;
+  duration_minutes: number;
+  distance_meters: number;
+  error?: string;
+}
+
+export interface MemberRoute {
+  member_id: string;
+  member_nickname: string;
+  distance_meters: number;
+  duration_seconds: number;
+  duration_minutes: number;
+  geometry: [number, number][]; // [lon, lat][]
+}
+
+export interface ChatRouteData {
+  type: 'meeting_place' | 'routes_to_destination';
+  destination: MeetingPlaceDestination;
+  centroid?: { longitude: number; latitude: number };
+  member_travel_times?: MemberTravelTime[];
+  member_routes?: MemberRoute[];
+}
+
+// WebSocket message types
+export type WSMessageType = 
+  | 'room_state'
+  | 'member_joined'
+  | 'member_left'
+  | 'location_update'
+  | 'host_changed'
+  | 'heartbeat_ack'
+  | 'room_chat_message'
+  | 'agent_typing'
+  | 'error';
+
+export interface WSMessage {
+  type: WSMessageType;
+  [key: string]: unknown;
+}
+
+export interface WSLocationUpdateMessage extends WSMessage {
+  type: 'location_update';
+  member_id: string;
+  location: MemberLocation;
+}
+
+export interface WSMemberJoinedMessage extends WSMessage {
+  type: 'member_joined';
+  member: RoomMember;
+  member_count: number;
+}
+
+export interface WSMemberLeftMessage extends WSMessage {
+  type: 'member_left';
+  member_id: string;
+  nickname: string;
+  member_count: number;
+}
+
+export interface WSRoomStateMessage extends WSMessage, RoomState {
+  type: 'room_state';
+}
+
+export interface WSChatMessageReceived extends WSMessage {
+  type: 'room_chat_message';
+  message: ChatMessage;
+}
+
+export interface WSAgentTyping extends WSMessage {
+  type: 'agent_typing';
+  is_typing: boolean;
+}

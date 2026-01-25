@@ -17,13 +17,20 @@ const MARKER_COLORS: Record<string, string> = {
   end: '#ef4444',
 };
 
-const MODE_ACCENT: Record<TransportMode, { color: string; label: string; name: string }> = {
+const MODE_ACCENT: Record<
+  TransportMode,
+  { color: string; label: string; name: string }
+> = {
   driving: { color: '#2563eb', label: 'D', name: 'Driving' },
   walking: { color: '#16a34a', label: 'W', name: 'Walking' },
   public_transport: { color: '#f97316', label: 'B', name: 'Public transport' },
 };
 
-const createMarkerIcon = (fillColor: string, ringColor: string, label: string) => {
+const createMarkerIcon = (
+  fillColor: string,
+  ringColor: string,
+  label: string
+) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">
     <circle cx="17" cy="17" r="15" fill="${fillColor}" stroke="${ringColor}" stroke-width="4" />
     <text x="17" y="21" text-anchor="middle" font-size="10" font-family="Arial, sans-serif" fill="#ffffff">${label}</text>
@@ -31,16 +38,25 @@ const createMarkerIcon = (fillColor: string, ringColor: string, label: string) =
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
-const getWaypointCoordinates = (waypoint: RouteWaypoint): [number, number] | null => {
+const getWaypointCoordinates = (
+  waypoint: RouteWaypoint
+): [number, number] | null => {
   const lon = waypoint.location?.lon ?? waypoint.lon;
   const lat = waypoint.location?.lat ?? waypoint.lat;
   if (typeof lon !== 'number' || typeof lat !== 'number') return null;
   return [lon, lat];
 };
 
-const toTransportMode = (route: Route, fallback?: string | null): TransportMode => {
+const toTransportMode = (
+  route: Route,
+  fallback?: string | null
+): TransportMode => {
   if (route.transport_chain) return 'public_transport';
-  if (fallback === 'walking' || fallback === 'public_transport' || fallback === 'driving') {
+  if (
+    fallback === 'walking' ||
+    fallback === 'public_transport' ||
+    fallback === 'driving'
+  ) {
     return fallback;
   }
   return 'driving';
@@ -56,7 +72,10 @@ type ActiveWaypoint = {
 export const MapMarkersComponent: React.FC = () => {
   const { mapInstance } = useMapStore();
   const { routeResponse, selectedRouteIndex } = useRouteStore();
-  const [activeWaypoint, setActiveWaypoint] = useState<ActiveWaypoint | null>(null);
+  console.log('routeResponse', routeResponse);
+  const [activeWaypoint, setActiveWaypoint] = useState<ActiveWaypoint | null>(
+    null
+  );
   const mapglRef = useRef<Awaited<ReturnType<typeof load>> | null>(null);
 
   const routes = routeResponse?.routes ?? [];
@@ -64,7 +83,13 @@ export const MapMarkersComponent: React.FC = () => {
   const requestMode = routeResponse?.request_summary?.transport_mode ?? null;
 
   const colorById = useMemo(
-    () => new Map(routes.map((route, index) => [route.route_id, ROUTE_COLORS[index % ROUTE_COLORS.length]])),
+    () =>
+      new Map(
+        routes.map((route, index) => [
+          route.route_id,
+          ROUTE_COLORS[index % ROUTE_COLORS.length],
+        ])
+      ),
     [routes]
   );
 
@@ -87,19 +112,27 @@ export const MapMarkersComponent: React.FC = () => {
       if (!mapglAPI || !isMounted) return;
 
       routes.forEach((route, index) => {
-        const orderedWaypoints = [...(route.waypoints ?? [])].sort((a, b) => a.order - b.order);
-        const routeColor = colorById.get(route.route_id) ?? ROUTE_COLORS[index % ROUTE_COLORS.length];
+        const orderedWaypoints = [...(route.waypoints ?? [])].sort(
+          (a, b) => a.order - b.order
+        );
+        const routeColor =
+          colorById.get(route.route_id) ??
+          ROUTE_COLORS[index % ROUTE_COLORS.length];
         const mode = toTransportMode(route, requestMode);
         const modeAccent = MODE_ACCENT[mode];
         const isSelected = index === selectedRouteIndex;
 
-        orderedWaypoints.forEach((waypoint) => {
+        orderedWaypoints.forEach(waypoint => {
           const coords = getWaypointCoordinates(waypoint);
           if (!coords) return;
           const fillColor = MARKER_COLORS[waypoint.type] ?? MARKER_COLORS.stop;
           const marker = new mapglAPI.Marker(mapInstance, {
             coordinates: coords,
-            icon: createMarkerIcon(fillColor, modeAccent.color, modeAccent.label),
+            icon: createMarkerIcon(
+              fillColor,
+              modeAccent.color,
+              modeAccent.label
+            ),
             size: [34, 34],
             anchor: [17, 17],
             zIndex: isSelected ? 3 : 1,
@@ -140,32 +173,42 @@ export const MapMarkersComponent: React.FC = () => {
 
   return (
     <div className="absolute left-4 top-4 z-20 w-72">
-      <Card className="shadow-lg border border-gray-200">
+      <Card className="app-shadow">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-gray-900">{activeWaypoint.waypoint.name}</div>
-            <div className="text-xs text-gray-500 mt-1">{activeWaypoint.waypoint.address}</div>
+            <div className="text-sm font-semibold app-text">
+              {activeWaypoint.waypoint.name}
+            </div>
+            <div className="text-xs app-muted mt-1">
+              {activeWaypoint.waypoint.address}
+            </div>
           </div>
           <button
             type="button"
             onClick={() => setActiveWaypoint(null)}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-[color:var(--app-muted)] hover:text-[color:var(--app-text)]"
             aria-label="Close"
           >
             <X size={16} />
           </button>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
-          <span className="inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: activeWaypoint.routeColor }} />
+        <div className="mt-3 flex items-center gap-2 text-xs text-[color:var(--app-muted)]">
+          <span
+            className="inline-flex h-2 w-2 rounded-full"
+            style={{ backgroundColor: activeWaypoint.routeColor }}
+          />
           <span>{activeWaypoint.route.title}</span>
         </div>
-        <div className="mt-2 text-xs text-gray-600 flex items-center gap-2">
-          <span className="inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: modeAccent.color }} />
+        <div className="mt-2 text-xs text-[color:var(--app-muted)] flex items-center gap-2">
+          <span
+            className="inline-flex h-2 w-2 rounded-full"
+            style={{ backgroundColor: modeAccent.color }}
+          />
           <span>Mode: {modeAccent.name}</span>
         </div>
         {activeWaypoint.waypoint.category && (
           <div className="mt-2">
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+            <span className="inline-flex items-center rounded-full bg-[color:var(--app-surface-2)] px-2 py-0.5 text-xs font-medium text-[color:var(--app-muted)]">
               {activeWaypoint.waypoint.category}
             </span>
           </div>

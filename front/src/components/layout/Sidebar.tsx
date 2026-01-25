@@ -51,7 +51,7 @@ export const Sidebar: React.FC = () => {
                 </Button>
                 <h2 className="font-semibold text-lg">Routes</h2>
              </div>
-             <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+             <div className="app-surface-2 p-4 rounded-lg text-center app-muted text-sm">
                 Route planning implementation pending...
              </div>
           </div>
@@ -59,7 +59,7 @@ export const Sidebar: React.FC = () => {
       default:
         return (
           <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            <div className="text-xs font-semibold app-muted uppercase tracking-wider mb-2">
               Menu
             </div>
             
@@ -107,22 +107,22 @@ export const Sidebar: React.FC = () => {
       {/* Sidebar Container */}
       <aside
         className={twMerge(
-          'fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 w-80 app-surface app-shadow transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex flex-col h-full border-r border-gray-200">
+        <div className="flex flex-col h-full border-r app-border">
           {/* Header */}
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="p-4 border-b app-border flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+              <div className="w-8 h-8 bg-[color:var(--app-accent)] rounded-lg flex items-center justify-center text-[color:var(--app-accent-contrast)] font-bold">
                 MA
               </div>
-              <span className="font-bold text-gray-900 text-lg">Map Adviser</span>
+              <span className="font-bold app-text text-lg">Map Adviser</span>
             </div>
             <button 
               onClick={toggleSidebar}
-              className="md:hidden text-gray-500 hover:text-gray-700"
+              className="md:hidden text-[color:var(--app-muted)] hover:text-[color:var(--app-text)]"
             >
               <X size={20} />
             </button>
@@ -133,8 +133,8 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-100 bg-gray-50">
-            <div className="text-xs text-center text-gray-500">
+          <div className="p-4 border-t app-border app-surface-2">
+            <div className="text-xs text-center app-muted">
               © 2024 Map Adviser
               <br />
               Powered by 2GIS

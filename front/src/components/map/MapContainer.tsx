@@ -3,10 +3,12 @@ import { load } from '@2gis/mapgl';
 import { Map as MapGL, Polyline, Marker } from '@2gis/mapgl/types';
 import { useMapStore } from '@/store/useMapStore';
 import { useRouteStore } from '@/store/useRouteStore';
+import { useRoomStore } from '@/store/useRoomStore';
 import { MapControls } from './MapControls';
 import { MapMarkersComponent } from './MapMarkersComponent';
 import { RouteDetailsPanel } from '../route/RouteDetailsPanel';
 import type { Route, PublicTransportMovement } from '@/types';
+import { RoomPanel, MemberMarkers } from '../room';
 
 const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
 const ROUTE_COLORS = ['#2563eb', '#f97316', '#16a34a'];
@@ -69,6 +71,7 @@ export const MapContainer: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const { setMapInstance, setCenter, setZoom, centeryb, zoom } = useMapStore();
   const { routeResponse, selectedRouteIndex, highlightedMovementIndex } = useRouteStore();
+  const { isManualLocationMode, isConnected, updateMyLocation, setManualLocationMode } = useRoomStore();
 
   // Initialize map
   useEffect(() => {
@@ -118,6 +121,33 @@ export const MapContainer: React.FC = () => {
       }
     };
   }, []);
+
+  // Handle map clicks for manual location mode
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+
+    const handleMapClick = (e: { lngLat: number[] }) => {
+      if (isManualLocationMode && isConnected) {
+        const [lon, lat] = e.lngLat;
+        updateMyLocation({
+          lat,
+          lon,
+          heading: null,
+          accuracy: null,
+        });
+        // Turn off manual mode after setting location
+        setManualLocationMode(false);
+      }
+    };
+
+    mapRef.current.on('click', handleMapClick as (ev: unknown) => void);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off('click', handleMapClick as (ev: unknown) => void);
+      }
+    };
+  }, [mapReady, isManualLocationMode, isConnected, updateMyLocation, setManualLocationMode]);
 
   // Render route when routeResponse changes
   useEffect(() => {
@@ -266,7 +296,7 @@ export const MapContainer: React.FC = () => {
         const centerLon = (minLon + maxLon) / 2;
         const centerLat = (minLat + maxLat) / 2;
         
-        mapRef.current.setCenter([centerLon, centerLat]);
+        mapRef.current!.setCenter([centerLon, centerLat]);
         
         // Calculate appropriate zoom level
         const lonDiff = maxLon - minLon;
@@ -280,17 +310,29 @@ export const MapContainer: React.FC = () => {
         else if (maxDiff > 0.01) newZoom = 14;
         else newZoom = 15;
         
-        mapRef.current.setZoom(newZoom);
+        mapRef.current!.setZoom(newZoom);
       }
     }
   }, [mapReady, routeResponse, selectedRouteIndex, highlightedMovementIndex]);
 
   return (
     <div className="relative w-full h-full bg-gray-200">
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div 
+        ref={mapContainerRef} 
+        className={`w-full h-full ${isManualLocationMode ? 'cursor-crosshair' : ''}`} 
+      />
+      {isManualLocationMode && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
+          <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium animate-pulse">
+            Click anywhere to set your location
+          </div>
+        </div>
+      )}
       <RouteDetailsPanel />
       <MapControls />
       <MapMarkersComponent />
+      <RoomPanel />
+      {mapReady && mapRef.current && <MemberMarkers map={mapRef.current} />}
     </div>
   );
 };

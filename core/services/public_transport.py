@@ -9,7 +9,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-
 def parse_wkt(wkt: str) -> list[list[float]]:
     """Parse WKT geometry to list of [lon, lat] coordinates.
 
@@ -69,6 +68,8 @@ def parse_wkt(wkt: str) -> list[list[float]]:
 
     return coordinates
 
+from services.gis_rate_limiter import create_2gis_async_client
+
 PUBLIC_TRANSPORT_URL = "https://routing.api.2gis.com/public_transport/2.0"
 
 # Singleton instance for connection reuse
@@ -105,7 +106,7 @@ class GISPublicTransportClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or get_api_key()
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = create_2gis_async_client(timeout=30.0)
 
     async def close(self):
         """Close the HTTP client."""
@@ -208,7 +209,15 @@ class GISPublicTransportClient:
             return {
                 "source": source_name,
                 "target": target_name,
-                "routes": [self._parse_route(route) for route in data],
+                "routes": [
+                    self._parse_route(
+                        route,
+                        source_point=source_point,
+                        target_point=target_point,
+                        intermediate_points=intermediate_points,
+                    )
+                    for route in data
+                ],
                 "alternatives_count": len(data),
             }
 
@@ -223,7 +232,13 @@ class GISPublicTransportClient:
                 "details": str(e),
             }
 
-    def _parse_route(self, route: dict) -> dict:
+    def _parse_route(
+        self,
+        route: dict,
+        source_point: tuple[float, float],
+        target_point: tuple[float, float],
+        intermediate_points: Optional[list[tuple[float, float, str]]] = None,
+    ) -> dict:
         """Parse a single route from the API response.
 
         Args:
@@ -244,6 +259,11 @@ class GISPublicTransportClient:
 
         # Extract transport chain description
         transport_chain = self._extract_transport_chain(movements)
+        route_geometry = self._extract_route_geometry(movements)
+        if not route_geometry:
+            route_geometry = self._fallback_geometry(
+                source_point, target_point, intermediate_points
+            )
 
         # Parse detailed movements and build geometry
         movement_details = []
@@ -370,6 +390,101 @@ class GISPublicTransportClient:
             "route_geometry": route_geometry,
             "schedule": schedule_info,
         }
+
+    def _extract_route_geometry(self, movements: list[dict]) -> list[list[float]]:
+        """Extract route geometry by combining coordinates from movements."""
+        coordinates: list[list[float]] = []
+
+        for movement in movements or []:
+            for point in self._extract_geometry_from_movement(movement):
+                if not coordinates or coordinates[-1] != point:
+                    coordinates.append(point)
+
+        return coordinates
+
+    def _extract_geometry_from_movement(self, movement: dict) -> list[list[float]]:
+        candidates = []
+        for key in ("geometry", "path", "paths", "track", "tracks", "line", "lines", "route", "routes", "polyline"):
+            if key in movement:
+                candidates.append(movement[key])
+
+        coords: list[list[float]] = []
+        for candidate in candidates:
+            coords.extend(self._collect_coordinates(candidate))
+
+        # Also check nested pedestrian instructions if present
+        if not coords and "pedestrian_instructions" in movement:
+            coords.extend(self._collect_coordinates(movement["pedestrian_instructions"]))
+
+        return coords
+
+    def _collect_coordinates(self, obj) -> list[list[float]]:
+        coords: list[list[float]] = []
+
+        if isinstance(obj, dict):
+            if "lon" in obj and "lat" in obj:
+                coords.append(self._normalize_pair(obj["lon"], obj["lat"]))
+            if "longitude" in obj and "latitude" in obj:
+                coords.append(self._normalize_pair(obj["longitude"], obj["latitude"]))
+            if "point" in obj:
+                coords.extend(self._collect_coordinates(obj["point"]))
+            if "points" in obj:
+                coords.extend(self._collect_coordinates(obj["points"]))
+            if "geometry" in obj and obj["geometry"] is not obj:
+                coords.extend(self._collect_coordinates(obj["geometry"]))
+            if "polyline" in obj and isinstance(obj["polyline"], str):
+                coords.extend(self._parse_linestring(obj["polyline"]))
+            return coords
+
+        if isinstance(obj, (list, tuple)):
+            if len(obj) >= 2 and all(isinstance(val, (int, float)) for val in obj[:2]):
+                coords.append(self._normalize_pair(obj[0], obj[1]))
+            else:
+                for item in obj:
+                    coords.extend(self._collect_coordinates(item))
+            return coords
+
+        if isinstance(obj, str):
+            coords.extend(self._parse_linestring(obj))
+
+        return coords
+
+    def _normalize_pair(self, first: float, second: float) -> list[float]:
+        if abs(first) <= 90 and abs(second) > 90:
+            return [second, first]
+        return [first, second]
+
+    def _parse_linestring(self, linestring: str) -> list[list[float]]:
+        if "LINESTRING" not in linestring:
+            return []
+
+        text = linestring.strip()
+        if text.startswith("LINESTRING"):
+            text = text[text.find("(") + 1:text.rfind(")")]
+        coords = []
+        for pair in text.split(","):
+            parts = pair.strip().split()
+            if len(parts) < 2:
+                continue
+            try:
+                lon = float(parts[0])
+                lat = float(parts[1])
+            except ValueError:
+                continue
+            coords.append([lon, lat])
+        return coords
+
+    def _fallback_geometry(
+        self,
+        source_point: tuple[float, float],
+        target_point: tuple[float, float],
+        intermediate_points: Optional[list[tuple[float, float, str]]] = None,
+    ) -> list[list[float]]:
+        points = [source_point]
+        if intermediate_points:
+            points.extend((pt[0], pt[1]) for pt in intermediate_points)
+        points.append(target_point)
+        return [[lon, lat] for lon, lat in points]
 
     def _extract_transport_chain(self, movements: list[dict]) -> str:
         """Extract transport types from movements to show the journey chain.

@@ -13,7 +13,7 @@ export const MessageList: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {messages.length === 0 && (
-        <div className="text-center text-gray-400 mt-10 text-sm">
+        <div className="text-center app-muted mt-10 text-sm">
           <p>Ask me anything about the map!</p>
           <p>e.g. "Where can I find coffee?"</p>
         </div>
@@ -31,8 +31,8 @@ export const MessageList: React.FC = () => {
             className={twMerge(
               'max-w-[80%] rounded-2xl px-4 py-2 text-sm',
               msg.sender === 'user'
-                ? 'bg-blue-600 text-white rounded-br-none'
-                : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
+                ? 'bg-[color:var(--app-accent)] text-[color:var(--app-accent-contrast)] rounded-br-none'
+                : 'app-surface border app-border text-[color:var(--app-text)] rounded-bl-none app-shadow-soft'
             )}
           >
             {msg.text}
@@ -42,11 +42,11 @@ export const MessageList: React.FC = () => {
 
       {isTyping && (
         <div className="flex justify-start">
-          <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
+          <div className="app-surface border app-border rounded-2xl rounded-bl-none px-4 py-3 app-shadow-soft">
             <div className="flex space-x-1">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-[color:var(--app-muted)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-[color:var(--app-muted)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-[color:var(--app-muted)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         </div>

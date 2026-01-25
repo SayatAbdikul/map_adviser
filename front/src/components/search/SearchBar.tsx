@@ -45,7 +45,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResults, onClear }) => {
         leftIcon={<Search size={18} />}
         rightIcon={
           query ? (
-            <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setQuery('')}
+              className="text-[color:var(--app-muted)] hover:text-[color:var(--app-text)]"
+            >
               <X size={18} />
             </button>
           ) : undefined

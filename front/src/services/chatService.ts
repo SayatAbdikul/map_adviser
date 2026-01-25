@@ -1,7 +1,7 @@
 import type { Message } from '@/store/useChatStore';
 import type { RouteResponse, RouteRequest, Route } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
  * Format duration in minutes to human-readable string
@@ -127,6 +127,7 @@ const formatRouteMessage = (response: RouteResponse): string => {
 const formatErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      console.log(error);
       return '❌ Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд на порту 8001.';
     }
     return `❌ Ошибка: ${error.message}`;
@@ -150,6 +151,7 @@ export const chatService = {
     };
 
     try {
+      console.log(API_BASE_URL);
       const response = await fetch(`${API_BASE_URL}/route`, {
         method: 'POST',
         headers: {
@@ -161,9 +163,27 @@ export const chatService = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        const errorMessage = typeof errorData.detail === 'string' 
-          ? errorData.detail 
-          : errorData.detail?.error || 'Request failed';
+        const detail = typeof errorData === 'object' ? errorData.detail : null;
+        const rawResponse =
+          detail && typeof detail === 'object' && typeof detail.raw_response === 'string'
+            ? detail.raw_response.trim()
+            : '';
+
+        if (rawResponse) {
+          return {
+            message: {
+              id: Date.now().toString(),
+              text: rawResponse,
+              sender: 'bot',
+              timestamp: Date.now(),
+            },
+            routeData: null,
+          };
+        }
+
+        const errorMessage = typeof detail === 'string' 
+          ? detail 
+          : detail?.error || 'Request failed';
         throw new Error(errorMessage);
       }
 

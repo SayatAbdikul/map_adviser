@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 
-import httpx
+from services.gis_rate_limiter import create_2gis_async_client
 
 BASE_URL = "https://catalog.api.2gis.com/3.0"
 GEOCODE_URL = "https://catalog.api.2gis.com/3.0/items/geocode"
@@ -42,7 +42,7 @@ class GISPlacesClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or get_api_key()
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = create_2gis_async_client(timeout=30.0)
 
     async def close(self):
         """Close the HTTP client."""
@@ -191,6 +191,7 @@ class GISPlacesClient:
         response = await self.client.get(f"{BASE_URL}/items", params=params)
         response.raise_for_status()
         data = response.json()
+        # print('response data', data)
 
         items = data.get("result", {}).get("items", [])
 

@@ -1,6 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --font-body: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  --font-display: 'Fraunces', 'Times New Roman', serif;
+  --app-canvas: hsl(32 26% 95%);
+  --app-surface: hsl(32 32% 99%);
+  --app-surface-2: hsl(32 24% 93%);
+  --app-surface-3: hsl(32 22% 90%);
+  --app-border: hsl(32 18% 84%);
+  --app-text: hsl(220 16% 16%);
+  --app-muted: hsl(220 12% 44%);
+  --app-accent: hsl(18 82% 52%);
+  --app-accent-strong: hsl(18 84% 44%);
+  --app-accent-soft: hsl(18 80% 90%);
+  --app-accent-contrast: hsl(0 0% 100%);
+  --app-ring: hsla(18, 82%, 50%, 0.35);
+  --app-shadow: 0 24px 60px rgba(18, 26, 38, 0.15);
+  --app-shadow-soft: 0 12px 28px rgba(18, 26, 38, 0.08);
+  --app-canvas-glow: radial-gradient(
+      900px circle at 12% 12%,
+      hsla(18, 82%, 86%, 0.7),
+      transparent 60%
+    ),
+    radial-gradient(900px circle at 90% 18%, hsla(205, 24%, 90%, 0.7), transparent 60%);
+  --app-noise: repeating-linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.08) 0 1px,
+      rgba(0, 0, 0, 0) 1px 3px
+    );
+}
 
 * {
   margin: 0;
@@ -9,9 +41,95 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--app-canvas);
+  color: var(--app-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  .app-canvas {
+    background-color: var(--app-canvas);
+  }
+
+  .app-surface {
+    background-color: var(--app-surface);
+  }
+
+  .app-surface-2 {
+    background-color: var(--app-surface-2);
+  }
+
+  .app-surface-3 {
+    background-color: var(--app-surface-3);
+  }
+
+  .app-border {
+    border-color: var(--app-border);
+  }
+
+  .app-text {
+    color: var(--app-text);
+  }
+
+  .app-muted {
+    color: var(--app-muted);
+  }
+
+  .app-accent {
+    background-color: var(--app-accent);
+    color: var(--app-accent-contrast);
+  }
+
+  .app-accent-soft {
+    background-color: var(--app-accent-soft);
+    color: var(--app-accent-strong);
+  }
+
+  .app-ring {
+    --tw-ring-color: var(--app-ring);
+  }
+
+  .app-shadow-soft {
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-shadow {
+    box-shadow: var(--app-shadow);
+  }
+}
+
+.theme-backdrop {
+  pointer-events: none;
+  background-color: var(--app-canvas);
+  background-image: var(--app-canvas-glow), var(--app-noise);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 160px 160px;
+}
+
+.theme-chip {
+  animation: theme-chip-in 0.45s ease both;
+}
+
+@keyframes theme-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-chip {
+    animation: none;
+  }
 }

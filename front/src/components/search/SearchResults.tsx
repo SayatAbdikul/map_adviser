@@ -16,15 +16,15 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect 
       {results.map((place) => (
         <Card 
           key={place.id}
-          className="cursor-pointer hover:bg-gray-50 transition-colors"
+          className="cursor-pointer hover:bg-[color:var(--app-surface-2)] transition-colors"
           onClick={() => onSelect(place)}
         >
           <div className="flex items-start">
-            <MapPin className="text-blue-500 mt-1 flex-shrink-0" size={18} />
+            <MapPin className="text-[color:var(--app-accent)] mt-1 flex-shrink-0" size={18} />
             <div className="ml-3">
-              <h3 className="font-medium text-gray-900">{place.name}</h3>
-              <p className="text-sm text-gray-500">{place.address}</p>
-              <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+              <h3 className="font-medium app-text">{place.name}</h3>
+              <p className="text-sm app-muted">{place.address}</p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-[color:var(--app-surface-2)] text-[color:var(--app-muted)]">
                 {place.category}
               </span>
             </div>

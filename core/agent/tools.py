@@ -16,6 +16,8 @@ from agent.tools import (
     validate_location_in_region,
     calculate_public_transport_route,
     IntermediatePoint,
+    find_meeting_place,
+    MemberLocation,
 )
 
 __all__ = [
@@ -29,4 +31,6 @@ __all__ = [
     "validate_location_in_region",
     "calculate_public_transport_route",
     "IntermediatePoint",
+    "find_meeting_place",
+    "MemberLocation",
 ]

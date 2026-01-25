@@ -100,12 +100,12 @@ export const chatService = {
      */
     sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
         const requestBody = {
-            description: text,
-            city: 'astana',
+            query: text,
+            mode: mode,
         };
 
         try {
-            const response = await fetch(`${API_BASE_URL}/plan-route`, {
+            const response = await fetch(`${API_BASE_URL}/route`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

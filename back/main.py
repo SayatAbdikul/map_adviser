@@ -1,14 +1,22 @@
 """FastAPI application for the path finding agent."""
 
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+import uvicorn
+
+from logging_config import configure_logging
 
 from dotenv import load_dotenv
 
 _ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=_ENV_PATH)
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,8 +50,9 @@ async def lifespan(app: FastAPI):
             "Missing required auth environment variables: "
             + ", ".join(missing_auth_env)
         )
+    global client
+    client = httpx.AsyncClient(timeout=5.0)
     
-    # Start room cleanup task
     room_manager.start_cleanup_task()
     
     yield
@@ -51,6 +60,7 @@ async def lifespan(app: FastAPI):
     await close_places_client()
     await close_routing_client()
     await close_supabase()
+    await client.aclose()
 
 
 app = FastAPI(
@@ -280,11 +290,10 @@ async def websocket_room(websocket: WebSocket, code: str, nickname: str = "Anony
     except WebSocketDisconnect:
         await room_manager.leave_room(room, member.id)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.exception("WebSocket error: %s", e)
         await room_manager.leave_room(room, member.id)
 
 
 if __name__ == "__main__":
-    import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)

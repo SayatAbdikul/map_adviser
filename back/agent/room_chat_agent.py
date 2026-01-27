@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import litellm
 
 from agent.tools.meeting_place import MemberLocation
+from agent.prompts.room_chat_prompts import get_room_chat_system_prompt
 from services.gis_places import get_places_client
 from services.gis_routing import get_routing_client
 
@@ -20,29 +21,6 @@ logger = logging.getLogger(__name__)
 # Configure LiteLLM
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash")
 
-ROOM_CHAT_SYSTEM_PROMPT = """Ты — AI-помощник для группы людей, которые хотят найти место для встречи.
-
-У тебя есть доступ к местоположениям всех участников комнаты. Твоя задача — помочь им найти оптимальное место для встречи.
-
-КОНТЕКСТ КОМНАТЫ:
-{room_context}
-
-ТВОИ ВОЗМОЖНОСТИ:
-1. Найти место для встречи, минимизирующее время в пути для всех участников
-2. Поиск мест по категориям (кафе, рестораны, парки и т.д.)
-3. Расчет маршрута к выбранному месту
-
-ИНСТРУМЕНТЫ:
-- find_meeting_place: Находит оптимальное место встречи для всех участников
-- search_nearby_places: Поиск мест рядом с определенной точкой
-- calculate_route: Расчет маршрута между точками
-
-ФОРМАТ ОТВЕТА:
-Отвечай дружелюбно и информативно. Если нашел место для встречи, опиши его и укажи время в пути для каждого участника.
-
-Если нужно показать маршрут на карте, верни его координаты в специальном формате (это будет обработано автоматически).
-
-ВАЖНО: Если у некоторых участников нет местоположения, предупреди об этом и предложи им поделиться своим местоположением."""
 
 # Tools for room chat
 ROOM_CHAT_TOOLS = [
@@ -287,7 +265,7 @@ async def process_room_chat(room: "Room", query: str) -> dict:
     """
     room_context = _get_room_context(room)
     
-    system_prompt = ROOM_CHAT_SYSTEM_PROMPT.format(room_context=room_context)
+    system_prompt = get_room_chat_system_prompt(room_context)
     
     messages = [
         {"role": "system", "content": system_prompt},

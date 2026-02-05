@@ -6,6 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 import uvicorn
+import httpx
 
 from logging_config import configure_logging
 
@@ -24,12 +25,11 @@ from pydantic import BaseModel
 
 from agent.path_agent import plan_route
 from agent.room_chat_agent import process_room_chat
-from auth_endpoints import router as auth_router
 from models.schemas import ErrorResponse, RouteRequest, RouteResponse
-from room_manager import room_manager, Room, RoomMember
+from room_manager import room_manager, Room
 from services.gis_places import close_places_client
 from services.gis_routing import close_routing_client
-from supabase_client import close_supabase
+from services.location_store import close_location_store
 
 
 @asynccontextmanager
@@ -40,18 +40,8 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("GEMINI_API_KEY environment variable is required")
     if not os.getenv("GIS_API_KEY"):
         raise RuntimeError("GIS_API_KEY environment variable is required")
-    missing_auth_env = [
-        name
-        for name in ("SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET")
-        if not os.getenv(name)
-    ]
-    if missing_auth_env:
-        raise RuntimeError(
-            "Missing required auth environment variables: "
-            + ", ".join(missing_auth_env)
-        )
     global client
-    client = httpx.AsyncClient(timeout=5.0)
+    client = httpx.AsyncClient(timeout=400.0)
     
     room_manager.start_cleanup_task()
     
@@ -59,7 +49,7 @@ async def lifespan(app: FastAPI):
     # Cleanup: close shared HTTP clients on shutdown
     await close_places_client()
     await close_routing_client()
-    await close_supabase()
+    await close_location_store()
     await client.aclose()
 
 
@@ -78,9 +68,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Auth routes
-app.include_router(auth_router)
 
 
 @app.get("/health")

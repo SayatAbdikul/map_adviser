@@ -5,6 +5,7 @@ import { ChevronUp, Minus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { AgentReasoningPanel } from './AgentReasoningPanel';
 
 export const ChatDrawer: React.FC = () => {
   const { isOpen, setIsOpen, toggleChat } = useChatStore();
@@ -95,7 +96,10 @@ export const ChatDrawer: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-hidden relative flex flex-col app-surface-2">
-              <MessageList />
+              <AgentReasoningPanel />
+              <div className="flex-1 overflow-hidden">
+                <MessageList />
+              </div>
               <ChatInput />
             </div>
           </>

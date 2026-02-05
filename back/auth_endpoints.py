@@ -190,6 +190,7 @@ async def login(credentials: UserLogin):
 
     Returns JWT token on successful authentication.
     """
+    print("Login attempt for:", credentials.email)
     user = await _get_user_by_email(credentials.email)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")

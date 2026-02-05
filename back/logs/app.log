@@ -1,0 +1,99 @@
+{"ts":"2026-02-05 15:33:29,177","level":"INFO","logger":"uvicorn.error","msg":"Started server process [95136]","module":"server","line":84}
+{"ts":"2026-02-05 15:33:29,177","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application startup.","module":"on","line":48}
+{"ts":"2026-02-05 15:33:29,216","level":"INFO","logger":"uvicorn.error","msg":"Application startup complete.","module":"on","line":62}
+{"ts":"2026-02-05 15:33:53,886","level":"INFO","logger":"uvicorn.error","msg":"Shutting down","module":"server","line":264}
+{"ts":"2026-02-05 15:33:53,987","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application shutdown.","module":"on","line":67}
+{"ts":"2026-02-05 15:33:53,995","level":"INFO","logger":"uvicorn.error","msg":"Application shutdown complete.","module":"on","line":76}
+{"ts":"2026-02-05 15:33:53,996","level":"INFO","logger":"uvicorn.error","msg":"Finished server process [95136]","module":"server","line":94}
+{"ts":"2026-02-05 15:34:02,426","level":"INFO","logger":"uvicorn.error","msg":"Started server process [95340]","module":"server","line":84}
+{"ts":"2026-02-05 15:34:02,426","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application startup.","module":"on","line":48}
+{"ts":"2026-02-05 15:34:02,448","level":"INFO","logger":"uvicorn.error","msg":"Application startup complete.","module":"on","line":62}
+{"ts":"2026-02-05 15:34:02,457","level":"ERROR","logger":"uvicorn.error","msg":"Traceback (most recent call last):
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "uvloop/loop.pyx", line 1512, in uvloop.loop.Loop.run_until_complete
+  File "uvloop/loop.pyx", line 1505, in uvloop.loop.Loop.run_until_complete
+  File "uvloop/loop.pyx", line 1379, in uvloop.loop.Loop.run_forever
+  File "uvloop/loop.pyx", line 557, in uvloop.loop.Loop._run
+  File "uvloop/loop.pyx", line 476, in uvloop.loop.Loop._on_idle
+  File "uvloop/cbhandles.pyx", line 83, in uvloop.loop.Handle._run
+  File "uvloop/cbhandles.pyx", line 63, in uvloop.loop.Handle._run
+  File "/home/martian/venv/lib/python3.12/site-packages/uvicorn/server.py", line 70, in serve
+    with self.capture_signals():
+  File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/home/martian/venv/lib/python3.12/site-packages/uvicorn/server.py", line 331, in capture_signals
+    signal.raise_signal(captured_signal)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 157, in _on_sigint
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/martian/venv/lib/python3.12/site-packages/starlette/routing.py", line 701, in lifespan
+    await receive()
+  File "/home/martian/venv/lib/python3.12/site-packages/uvicorn/lifespan/on.py", line 137, in receive
+    return await self.receive_queue.get()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/queues.py", line 158, in get
+    await getter
+asyncio.exceptions.CancelledError
+","module":"on","line":134}
+{"ts":"2026-02-05 15:34:10,374","level":"INFO","logger":"uvicorn.error","msg":"Started server process [95428]","module":"server","line":84}
+{"ts":"2026-02-05 15:34:10,374","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application startup.","module":"on","line":48}
+{"ts":"2026-02-05 15:34:10,399","level":"INFO","logger":"uvicorn.error","msg":"Application startup complete.","module":"on","line":62}
+{"ts":"2026-02-05 15:34:13,908","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:46848 - "OPTIONS /route HTTP/1.1" 200","module":"httptools_impl","line":483}
+{"ts":"2026-02-05 15:34:13,911","level":"INFO","logger":"agent.path_agent","msg":"OpenAI model: gemini/gemini-2.5-flash","module":"path_agent","line":411}
+{"ts":"2026-02-05 15:34:14,024","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:35:03,898","level":"INFO","logger":"agent.path_agent","msg":"search_region result count: 1","module":"path_agent","line":244}
+{"ts":"2026-02-05 15:35:03,901","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:35:05,440","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'Меги Силквей', 'city': None, 'region_id': 68}","module":"path_agent","line":122}
+{"ts":"2026-02-05 15:35:05,904","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:35:07,550","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'Керуен Сити', 'city': None, 'region_id': 68}","module":"path_agent","line":122}
+{"ts":"2026-02-05 15:36:05,548","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:36:09,450","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:36:11,488","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'lat': 51.089347, 'lon': 71.405441}, {'lat': 51.145294, 'lon': 71.413177}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-05 15:36:11,531","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:36:14,870","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:36:19,133","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:46848 - "POST /route HTTP/1.1" 500","module":"httptools_impl","line":483}
+{"ts":"2026-02-05 15:39:17,794","level":"INFO","logger":"agent.path_agent","msg":"OpenAI model: gemini/gemini-2.5-flash","module":"path_agent","line":411}
+{"ts":"2026-02-05 15:39:17,844","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:39:21,239","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'Мега', 'city': 'Астана', 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-05 15:39:21,240","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'Хан Шатыр', 'city': 'Астана', 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-05 15:39:23,278","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:39:25,744","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:39:29,016","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'lat': 51.089347, 'lon': 71.405441}, {'lon': 71.4041, 'lat': 51.132418}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-05 15:39:29,020","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:39:33,625","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'latitude': 51.089347, 'longitude': 71.405441}, {'latitude': 51.132418, 'longitude': 71.4041}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-05 15:39:34,135","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-05 15:40:50,323","level":"INFO","logger":"agent.path_agent","msg":"Agent output (first 200 chars): ```json
+{
+  "request_summary": {
+    "origin_address": "Мега, Астана",
+    "intent": "Построить маршрут с Меги до Хан Шатыра",
+    "transport_mode": "driving",
+    "optimization_choice": "time",
+    "","module":"path_agent","line":430}
+{"ts":"2026-02-05 15:40:50,324","level":"INFO","logger":"agent.path_agent","msg":"Successfully parsed JSON response","module":"path_agent","line":447}
+{"ts":"2026-02-05 15:40:50,837","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:57000 - "POST /route HTTP/1.1" 200","module":"httptools_impl","line":483}
+{"ts":"2026-02-05 15:42:33,387","level":"INFO","logger":"uvicorn.error","msg":"Shutting down","module":"server","line":264}
+{"ts":"2026-02-05 15:42:33,488","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application shutdown.","module":"on","line":67}
+{"ts":"2026-02-05 15:42:33,490","level":"INFO","logger":"uvicorn.error","msg":"Application shutdown complete.","module":"on","line":76}
+{"ts":"2026-02-05 15:42:33,491","level":"INFO","logger":"uvicorn.error","msg":"Finished server process [95428]","module":"server","line":94}

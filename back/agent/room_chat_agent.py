@@ -3,9 +3,13 @@
 import json
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
-import litellm
+from langgraph.prebuilt import create_react_agent
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from agent.tools.meeting_place import MemberLocation
 from agent.prompts.room_chat_prompts import get_room_chat_system_prompt
@@ -18,98 +22,8 @@ if TYPE_CHECKING:
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Configure LiteLLM
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash")
-
-
-# Tools for room chat
-ROOM_CHAT_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "find_meeting_place",
-            "description": "Find the best meeting place for all room members. Calculates centroid of all locations and finds places that minimize total travel time.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "What to search for (e.g., 'кафе', 'ресторан', 'парк')"
-                    },
-                    "mode": {
-                        "type": "string",
-                        "enum": ["driving", "walking"],
-                        "description": "Transportation mode (default: driving)"
-                    },
-                    "radius": {
-                        "type": "integer",
-                        "description": "Search radius in meters from centroid (default: 3000)"
-                    }
-                },
-                "required": ["query"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "search_nearby_places",
-            "description": "Search for places near a specific location.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "What to search for"
-                    },
-                    "longitude": {
-                        "type": "number",
-                        "description": "Longitude of search center"
-                    },
-                    "latitude": {
-                        "type": "number",
-                        "description": "Latitude of search center"
-                    },
-                    "radius": {
-                        "type": "integer",
-                        "description": "Search radius in meters (default: 3000)"
-                    }
-                },
-                "required": ["query", "longitude", "latitude"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "calculate_route",
-            "description": "Calculate route from all members to a destination point.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "destination_longitude": {
-                        "type": "number",
-                        "description": "Destination longitude"
-                    },
-                    "destination_latitude": {
-                        "type": "number",
-                        "description": "Destination latitude"
-                    },
-                    "destination_name": {
-                        "type": "string",
-                        "description": "Name of the destination"
-                    },
-                    "mode": {
-                        "type": "string",
-                        "enum": ["driving", "walking"],
-                        "description": "Transportation mode"
-                    }
-                },
-                "required": ["destination_longitude", "destination_latitude"]
-            }
-        }
-    },
-]
+# Configure OpenAI via LiteLLM
+OPENAI_MODEL = os.getenv("GEMINI_MODEL", "gpt-4.1-mini")
 
 
 def _get_room_context(room: "Room") -> str:
@@ -153,101 +67,151 @@ def _get_member_locations(room: "Room") -> list[MemberLocation]:
     return result
 
 
-async def _execute_room_tool(
-    name: str,
-    arguments: dict,
-    room: "Room"
-) -> dict:
-    """Execute a room chat tool."""
-    try:
-        logger.info(f"Executing room tool: {name} with args: {arguments}")
-        
-        if name == "find_meeting_place":
-            member_locations = _get_member_locations(room)
-            
-            if len(member_locations) < 2:
-                return {
-                    "error": "Нужно минимум 2 участника с местоположением для поиска места встречи",
-                    "members_with_location": len(member_locations),
-                }
-            
-            # Import and call the implementation function directly (not the decorated tool)
-            from agent.tools.meeting_place import find_meeting_place_impl
-            
-            result = await find_meeting_place_impl(
-                query=arguments["query"],
-                member_locations=member_locations,
-                mode=arguments.get("mode", "driving"),
-                limit=5,
-                radius=arguments.get("radius", 3000),
-            )
-            logger.info(f"find_meeting_place result: {result}")
-            return result
-        
-        elif name == "search_nearby_places":
-            places_client = get_places_client()
-            result = await places_client.search_places(
-                query=arguments["query"],
-                location=(arguments["longitude"], arguments["latitude"]),
-                radius=arguments.get("radius", 3000),
-                limit=5,
-            )
-            logger.info(f"search_nearby_places result: {result}")
-            return result
-        
-        elif name == "calculate_route":
-            # Calculate routes from all members to destination
-            routing_client = get_routing_client()
-            member_locations = _get_member_locations(room)
-            
-            if not member_locations:
-                return {"error": "Нет участников с местоположением"}
-            
-            dest_lon = arguments["destination_longitude"]
-            dest_lat = arguments["destination_latitude"]
-            dest_name = arguments.get("destination_name", "Место назначения")
-            mode = arguments.get("mode", "driving")
-            
-            routes = []
-            combined_geometry = []
-            
-            for member in member_locations:
-                route = await routing_client.get_route(
-                    points=[(member.longitude, member.latitude), (dest_lon, dest_lat)],
-                    mode=mode,
-                    optimize="time",
-                )
-                
-                if "error" not in route:
-                    routes.append({
-                        "member_id": member.member_id,
-                        "member_nickname": member.member_nickname,
-                        "distance_meters": route.get("total_distance"),
-                        "duration_seconds": route.get("total_duration"),
-                        "duration_minutes": round(route.get("total_duration", 0) / 60, 1),
-                        "geometry": route.get("geometry", []),
-                    })
-                    # Add geometry to combined
-                    if route.get("geometry"):
-                        combined_geometry.extend(route["geometry"])
-            
-            result = {
-                "destination": {
-                    "name": dest_name,
-                    "coordinates": [dest_lon, dest_lat],
-                },
-                "member_routes": routes,
-                "combined_geometry": combined_geometry,
+def _build_room_chat_tools(room: "Room"):
+    """Create tool set bound to a specific room."""
+
+    @tool
+    async def find_meeting_place(
+        query: str,
+        mode: str = "driving",
+        radius: int = 3000,
+    ) -> dict:
+        member_locations = _get_member_locations(room)
+        if len(member_locations) < 2:
+            return {
+                "error": "Нужно минимум 2 участника с местоположением для поиска места встречи",
+                "members_with_location": len(member_locations),
             }
-            logger.info(f"calculate_route result: routes for {len(routes)} members")
-            return result
+        from agent.tools.meeting_place import find_meeting_place_impl
+
+        return await find_meeting_place_impl(
+            query=query,
+            member_locations=member_locations,
+            mode=mode,
+            limit=5,
+            radius=radius,
+        )
+
+    @tool
+    async def search_nearby_places(
+        query: str,
+        longitude: float,
+        latitude: float,
+        radius: int = 3000,
+    ) -> dict:
+        places_client = get_places_client()
+        return await places_client.search_places(
+            query=query,
+            location=(longitude, latitude),
+            radius=radius,
+            limit=5,
+        )
+
+    @tool
+    async def calculate_route(
+        destination_longitude: float,
+        destination_latitude: float,
+        destination_name: str = "Место назначения",
+        mode: str = "driving",
+    ) -> dict:
+        routing_client = get_routing_client()
+        member_locations = _get_member_locations(room)
+
+        if not member_locations:
+            return {"error": "Нет участников с местоположением"}
+
+        routes = []
+        combined_geometry = []
+
+        for member in member_locations:
+            route = await routing_client.get_route(
+                points=[(member.longitude, member.latitude), (destination_longitude, destination_latitude)],
+                mode=mode,
+                optimize="time",
+            )
+
+            if "error" not in route:
+                routes.append({
+                    "member_id": member.member_id,
+                    "member_nickname": member.member_nickname,
+                    "distance_meters": route.get("total_distance"),
+                    "duration_seconds": route.get("total_duration"),
+                    "duration_minutes": round(route.get("total_duration", 0) / 60, 1),
+                    "geometry": route.get("geometry", []),
+                })
+                if route.get("geometry"):
+                    combined_geometry.extend(route["geometry"])
+
+        return {
+            "destination": {
+                "name": destination_name,
+                "coordinates": [destination_longitude, destination_latitude],
+            },
+            "member_routes": routes,
+            "combined_geometry": combined_geometry,
+        }
+
+    return [find_meeting_place, search_nearby_places, calculate_route]
+
+
+def _build_room_chat_agent(tools: list, system_prompt: str):
+    """Create LangGraph agent for room chat."""
+    llm = ChatLiteLLM(model=OPENAI_MODEL, temperature=0)
+    return create_react_agent(
+        model=llm,
+        tools=tools,
+        prompt=system_prompt,
+    )
+
+
+def _coerce_observation(observation: Any) -> Optional[dict]:
+    """Convert tool observations to a dict if possible."""
+    if isinstance(observation, dict):
+        return observation
+    if isinstance(observation, str):
+        try:
+            return json.loads(observation)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+def _extract_route_data(messages: list) -> Optional[dict]:
+    """Derive map payload from the latest relevant tool response."""
+    if not messages:
+        return None
+
+    for msg in reversed(messages):
+        if not isinstance(msg, ToolMessage):
+            continue
         
-        else:
-            return {"error": f"Unknown tool: {name}"}
-    
-    except Exception as e:
-        logger.error(f"Room tool {name} error: {e}")
-        return {"error": str(e)}
+        content = msg.content
+        parsed = _coerce_observation(content)
+        if not parsed:
+            continue
+
+        tool_name = msg.name if hasattr(msg, 'name') else None
+        if tool_name == "find_meeting_place" and "best" in parsed:
+            best = parsed["best"]
+            return {
+                "type": "meeting_place",
+                "destination": {
+                    "name": best.get("name"),
+                    "address": best.get("address"),
+                    "coordinates": best.get("coordinates"),
+                },
+                "member_travel_times": best.get("member_travel_times", []),
+                "centroid": parsed.get("centroid"),
+            }
+
+        if tool_name == "calculate_route" and "member_routes" in parsed:
+            return {
+                "type": "routes_to_destination",
+                "destination": parsed.get("destination"),
+                "member_routes": parsed.get("member_routes", []),
+            }
+
+    return None
 
 
 async def process_room_chat(room: "Room", query: str) -> dict:
@@ -263,89 +227,27 @@ async def process_room_chat(room: "Room", query: str) -> dict:
         - response: Text response to display
         - route_data: Optional route data to display on map
     """
+    logger.info("OpenAI model: %s", OPENAI_MODEL)
     room_context = _get_room_context(room)
     
     system_prompt = get_room_chat_system_prompt(room_context)
-    
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": query}
-    ]
-    
-    # Track route data if we find a meeting place
-    route_data = None
-    
-    # Agentic loop
-    max_iterations = 8
-    for iteration in range(max_iterations):
-        logger.info(f"Room chat iteration {iteration + 1}")
-        
-        response = await litellm.acompletion(
-            model=GEMINI_MODEL,
-            messages=messages,
-            tools=ROOM_CHAT_TOOLS,
-        )
-        
-        choice = response.choices[0]
-        message = choice.message
-        logger.info(f"LLM response - tool_calls: {message.tool_calls}")
-        
-        # Add assistant message to history
-        messages.append({
-            "role": "assistant",
-            "content": message.content,
-            "tool_calls": message.tool_calls if message.tool_calls else None
-        })
-        
-        # If no tool calls, we have the final response
-        if not message.tool_calls:
-            response_text = message.content or "Не удалось обработать запрос"
-            logger.info(f"Final room chat response: {response_text[:200]}...")
+    tools = _build_room_chat_tools(room)
+    agent = _build_room_chat_agent(tools, system_prompt)
+
+    agent_result = await agent.ainvoke(
+        {"messages": [HumanMessage(content=query)]}
+    )
+
+    messages = agent_result.get("messages", [])
+    response_text = "Не удалось обработать запрос"
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage) and msg.content:
+            response_text = msg.content
             break
-        
-        # Execute tool calls
-        for tool_call in message.tool_calls:
-            func_name = tool_call.function.name
-            func_args = json.loads(tool_call.function.arguments)
-            
-            # Execute the tool
-            result = await _execute_room_tool(func_name, func_args, room)
-            
-            # If this is a meeting place result, extract route data
-            if func_name == "find_meeting_place" and "best" in result:
-                best = result["best"]
-                route_data = {
-                    "type": "meeting_place",
-                    "destination": {
-                        "name": best.get("name"),
-                        "address": best.get("address"),
-                        "coordinates": best.get("coordinates"),
-                    },
-                    "member_travel_times": best.get("member_travel_times", []),
-                    "centroid": result.get("centroid"),
-                }
-            
-            # If this is a route calculation, store the geometry
-            elif func_name == "calculate_route" and "member_routes" in result:
-                route_data = {
-                    "type": "routes_to_destination",
-                    "destination": result.get("destination"),
-                    "member_routes": result.get("member_routes", []),
-                }
-            
-            # Add tool result to messages
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": json.dumps(result, ensure_ascii=False)
-            })
-    else:
-        return {
-            "response": "Превышено максимальное количество итераций. Попробуйте переформулировать запрос.",
-            "route_data": None,
-        }
     
-    return {
-        "response": response_text,
-        "route_data": route_data,
-    }
+    if not isinstance(response_text, str):
+        response_text = str(response_text)
+
+    route_data = _extract_route_data(messages)
+
+    return {"response": response_text, "route_data": route_data}

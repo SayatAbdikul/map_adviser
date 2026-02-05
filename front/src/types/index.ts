@@ -103,6 +103,15 @@ export interface Place {
     type?: string;
 }
 
+// Reasoning / trace from agent
+export interface ReasoningStep {
+  id: number | string;
+  title: string;
+  tool?: string | null;
+  input?: string;
+  output?: string;
+}
+
 // Legacy routing service response format
 export interface LegacyRouteResponse {
     places: Place[];
@@ -110,12 +119,14 @@ export interface LegacyRouteResponse {
     total_distance?: number;  // in meters
     total_duration?: number;  // in seconds
     gemini_explanation: string;
+    reasoning?: ReasoningStep[];
 }
 
 // New core agent response format
 export interface CoreAgentResponse {
     routes: CoreRoute[];
     request_summary?: RequestSummary;
+    reasoning?: ReasoningStep[];
 }
 
 export interface CoreRoute {

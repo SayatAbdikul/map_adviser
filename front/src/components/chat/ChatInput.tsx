@@ -7,7 +7,11 @@ import { Button } from '@/components/common/Button';
 
 type TransportMode = 'driving' | 'walking' | 'public_transport';
 
-const TRANSPORT_MODES: { mode: TransportMode; icon: React.ReactNode; label: string }[] = [
+const TRANSPORT_MODES: {
+  mode: TransportMode;
+  icon: React.ReactNode;
+  label: string;
+}[] = [
   { mode: 'driving', icon: <Car size={16} />, label: 'Машина' },
   { mode: 'walking', icon: <PersonStanding size={16} />, label: 'Пешком' },
   { mode: 'public_transport', icon: <Bus size={16} />, label: 'Транспорт' },
@@ -22,25 +26,30 @@ export const ChatInput: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const lastSpeechNoticeRef = useRef<{ message: string; at: number } | null>(null);
+  const lastSpeechNoticeRef = useRef<{ message: string; at: number } | null>(
+    null
+  );
 
-  const pushSpeechNotice = useCallback((message: string) => {
-    const now = Date.now();
-    if (lastSpeechNoticeRef.current) {
-      const { message: lastMessage, at } = lastSpeechNoticeRef.current;
-      if (lastMessage === message && now - at < 10000) {
-        return;
+  const pushSpeechNotice = useCallback(
+    (message: string) => {
+      const now = Date.now();
+      if (lastSpeechNoticeRef.current) {
+        const { message: lastMessage, at } = lastSpeechNoticeRef.current;
+        if (lastMessage === message && now - at < 10000) {
+          return;
+        }
       }
-    }
 
-    lastSpeechNoticeRef.current = { message, at: now };
-    addMessage({
-      id: `speech-${now}`,
-      text: message,
-      sender: 'bot',
-      timestamp: now,
-    });
-  }, [addMessage]);
+      lastSpeechNoticeRef.current = { message, at: now };
+      addMessage({
+        id: `speech-${now}`,
+        text: message,
+        sender: 'bot',
+        timestamp: now,
+      });
+    },
+    [addMessage]
+  );
 
   useEffect(() => {
     const SpeechRecognition =
@@ -65,7 +74,7 @@ export const ChatInput: React.FC = () => {
       setIsRecording(false);
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = event => {
       console.error('Speech recognition error:', event);
       setIsRecording(false);
 
@@ -88,15 +97,15 @@ export const ChatInput: React.FC = () => {
       pushSpeechNotice(message);
     };
 
-    recognition.onresult = (event) => {
+    recognition.onresult = event => {
       const transcript = Array.from(event.results)
         .slice(event.resultIndex)
-        .map((result) => result[0]?.transcript ?? '')
+        .map(result => result[0]?.transcript ?? '')
         .join(' ')
         .trim();
 
       if (!transcript) return;
-      setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      setText(prev => (prev ? `${prev} ${transcript}` : transcript));
     };
 
     recognitionRef.current = recognition;
@@ -120,7 +129,14 @@ export const ChatInput: React.FC = () => {
     }
 
     const userMsg = text.trim();
-    const modeLabel = TRANSPORT_MODES.find(m => m.mode === transportMode)?.label || transportMode;
+    // Capture history BEFORE adding the new user message to avoid duplicating it
+    const history = useChatStore.getState().messages.map(m => ({
+      role: m.sender === 'bot' ? ('assistant' as const) : ('user' as const),
+      content: m.text,
+    }));
+    const modeLabel =
+      TRANSPORT_MODES.find(m => m.mode === transportMode)?.label ||
+      transportMode;
     setText('');
     setIsSending(true);
     setLoading(true);
@@ -136,18 +152,26 @@ export const ChatInput: React.FC = () => {
     setTyping(true);
 
     try {
-      const response = await chatService.sendMessage(userMsg, transportMode);
-      
+      const response = await chatService.sendMessage(
+        userMsg,
+        transportMode,
+        history
+      );
+
       // Add bot response message
       addMessage(response.message);
-      
+
       // Update route store with route data if available
       if (response.routeData) {
         setRouteResponse(response.routeData);
-      } else if (response.message.text.startsWith('❌')) {
-        setError(response.message.text);
-      } else {
         setError(null);
+      } else {
+        setRouteResponse(null);
+        if (response.message.text.startsWith('❌')) {
+          setError(response.message.text);
+        } else {
+          setError(null);
+        }
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -168,7 +192,9 @@ export const ChatInput: React.FC = () => {
   const handleToggleRecording = () => {
     if (isSending) return;
     if (!speechSupported) {
-      pushSpeechNotice('🎙️ Распознавание речи не поддерживается в этом браузере.');
+      pushSpeechNotice(
+        '🎙️ Распознавание речи не поддерживается в этом браузере.'
+      );
       return;
     }
     const recognition = recognitionRef.current;
@@ -210,16 +236,13 @@ export const ChatInput: React.FC = () => {
       </div>
 
       {/* Input Form */}
-      <form
-        onSubmit={handleSend}
-        className="flex items-center gap-2"
-      >
+      <form onSubmit={handleSend} className="flex items-center gap-2">
         <input
           type="text"
           className="flex-1 bg-[color:var(--app-surface-2)] text-[color:var(--app-text)] placeholder-[color:var(--app-muted)] border-0 rounded-full px-4 py-2 focus:ring-2 focus:ring-[color:var(--app-ring)] focus:bg-[color:var(--app-surface)] transition-colors"
           placeholder="Введите маршрут, например: от Байтерека до EXPO..."
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={e => setText(e.target.value)}
         />
         <Button
           type="button"
@@ -249,7 +272,7 @@ export const ChatInput: React.FC = () => {
           disabled={!text.trim() || isSending}
           className="rounded-full w-10 h-10 p-0 flex-shrink-0"
         >
-          <Send size={18} className={text.trim() ? "ml-1" : ""} />
+          <Send size={18} className={text.trim() ? 'ml-1' : ''} />
         </Button>
       </form>
     </div>

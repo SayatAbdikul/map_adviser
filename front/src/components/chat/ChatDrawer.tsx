@@ -9,7 +9,9 @@ import { AgentReasoningPanel } from './AgentReasoningPanel';
 
 export const ChatDrawer: React.FC = () => {
   const { isOpen, setIsOpen, toggleChat } = useChatStore();
-  const [sheetSize, setSheetSize] = useState<'collapsed' | 'half' | 'full'>('collapsed');
+  const [sheetSize, setSheetSize] = useState<'collapsed' | 'half' | 'full'>(
+    'collapsed'
+  );
   const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export const ChatDrawer: React.FC = () => {
 
   const sheetHeight =
     sheetSize === 'collapsed' ? '72px' : sheetSize === 'half' ? '50vh' : '92vh';
-  
+
   return (
     <div
       className={twMerge(
@@ -80,7 +82,7 @@ export const ChatDrawer: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     if (sheetSize === 'full') {
                       setSheetSize('half');
@@ -95,9 +97,9 @@ export const ChatDrawer: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden relative flex flex-col app-surface-2">
+            <div className="flex-1 overflow-hidden min-h-0 relative flex flex-col app-surface-2">
               <AgentReasoningPanel />
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden min-h-0">
                 <MessageList />
               </div>
               <ChatInput />

@@ -102,6 +102,7 @@ async def create_route(request: RouteRequest):
         result = await plan_route(
             query=request.query,
             mode=request.mode,
+            history=request.history,
         )
 
         if "error" in result:

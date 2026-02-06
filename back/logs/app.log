@@ -97,3 +97,67 @@ LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils
 {"ts":"2026-02-05 15:42:33,488","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application shutdown.","module":"on","line":67}
 {"ts":"2026-02-05 15:42:33,490","level":"INFO","logger":"uvicorn.error","msg":"Application shutdown complete.","module":"on","line":76}
 {"ts":"2026-02-05 15:42:33,491","level":"INFO","logger":"uvicorn.error","msg":"Finished server process [95428]","module":"server","line":94}
+{"ts":"2026-02-06 23:16:55,339","level":"INFO","logger":"uvicorn.error","msg":"Started server process [182124]","module":"server","line":84}
+{"ts":"2026-02-06 23:16:55,339","level":"INFO","logger":"uvicorn.error","msg":"Waiting for application startup.","module":"on","line":48}
+{"ts":"2026-02-06 23:16:55,359","level":"INFO","logger":"uvicorn.error","msg":"Application startup complete.","module":"on","line":62}
+{"ts":"2026-02-06 23:17:14,723","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:38442 - "OPTIONS /route HTTP/1.1" 200","module":"httptools_impl","line":483}
+{"ts":"2026-02-06 23:17:14,725","level":"INFO","logger":"agent.path_agent","msg":"OpenAI model: gemini/gemini-2.5-flash","module":"path_agent","line":434}
+{"ts":"2026-02-06 23:17:14,768","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:17:29,984","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'артема', 'city': None, 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-06 23:17:30,007","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'ипподром', 'city': None, 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-06 23:17:30,319","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:17:32,373","level":"INFO","logger":"agent.path_agent","msg":"Agent output (first 200 chars): ```json
+{
+  "clarification_needed": true,
+  "question": "Пожалуйста, уточните, какой именно ипподром вы имеете в виду, а также подтвердите, что 'Артем' является правильной отправной точкой.",
+  "missi","module":"path_agent","line":457}
+{"ts":"2026-02-06 23:17:32,373","level":"INFO","logger":"agent.path_agent","msg":"Successfully parsed JSON response","module":"path_agent","line":474}
+{"ts":"2026-02-06 23:17:32,374","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:38442 - "POST /route HTTP/1.1" 200","module":"httptools_impl","line":483}
+{"ts":"2026-02-06 23:18:06,698","level":"INFO","logger":"agent.path_agent","msg":"OpenAI model: gemini/gemini-2.5-flash","module":"path_agent","line":434}
+{"ts":"2026-02-06 23:18:06,726","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:18:08,877","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'рынок Артем', 'city': None, 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-06 23:18:09,115","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:18:10,920","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'центральный ипподром', 'city': None, 'region_id': None}","module":"path_agent","line":122}
+{"ts":"2026-02-06 23:18:11,052","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:18:12,868","level":"INFO","logger":"agent.path_agent","msg":"Agent output (first 200 chars): {"clarification_needed": true, "question": "Рынок Артем находится в городе Артем, а Центральный ипподром - в Москве. Вы хотите построить маршрут между этими двумя городами или имели в виду ипподром в ","module":"path_agent","line":457}
+{"ts":"2026-02-06 23:18:12,868","level":"INFO","logger":"agent.path_agent","msg":"Successfully parsed JSON response","module":"path_agent","line":474}
+{"ts":"2026-02-06 23:18:12,868","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:45382 - "POST /route HTTP/1.1" 200","module":"httptools_impl","line":483}
+{"ts":"2026-02-06 23:18:57,459","level":"INFO","logger":"agent.path_agent","msg":"OpenAI model: gemini/gemini-2.5-flash","module":"path_agent","line":434}
+{"ts":"2026-02-06 23:18:57,486","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:18:59,760","level":"INFO","logger":"agent.path_agent","msg":"search_region result count: 1","module":"path_agent","line":244}
+{"ts":"2026-02-06 23:18:59,763","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:19:00,875","level":"INFO","logger":"agent.path_agent","msg":"geocode_address args: {'address': 'рынок Артем', 'city': 'Астана', 'region_id': 68}","module":"path_agent","line":122}
+{"ts":"2026-02-06 23:19:09,010","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:19:10,760","level":"INFO","logger":"agent.path_agent","msg":"search_nearby_places args: {'query': 'ипподром', 'longitude': 71.436377, 'latitude': 51.173266, 'radius': 5000, 'limit': 5, 'region_id': 68}","module":"path_agent","line":137}
+{"ts":"2026-02-06 23:19:59,945","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:20:01,409","level":"INFO","logger":"agent.path_agent","msg":"search_nearby_places args: {'query': 'ипподром', 'longitude': None, 'latitude': None, 'radius': 5000, 'limit': 5, 'region_id': 68}","module":"path_agent","line":137}
+{"ts":"2026-02-06 23:20:01,489","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:20:05,041","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:20:06,711","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'latitude': 51.173266, 'longitude': 71.436377}, {'latitude': 51.0708, 'longitude': 71.749732}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-06 23:20:07,174","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:20:09,713","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'latitude': 51.173266, 'longitude': 71.436377}, {'latitude': 51.0708, 'longitude': 71.749732}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-06 23:20:09,826","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:20:12,978","level":"INFO","logger":"agent.path_agent","msg":"calculate_route args: {'points': [{'latitude': 51.173266, 'longitude': 71.436377}, {'longitude': 71.749732, 'latitude': 51.0708}], 'mode': 'driving', 'optimize': 'time'}","module":"path_agent","line":155}
+{"ts":"2026-02-06 23:20:13,090","level":"INFO","logger":"LiteLLM","msg":"
+LiteLLM completion() model= gemini-2.5-flash; provider = gemini","module":"utils","line":3871}
+{"ts":"2026-02-06 23:22:52,905","level":"INFO","logger":"agent.path_agent","msg":"Agent output (first 200 chars): ```json
+{
+  "request_summary": {
+    "origin_address": "рынок Артем, Астана (улица Сакена Сейфуллина, 47)",
+    "intent": "Построить маршрут на машине от рынка Артем до ипподрома в Астане",
+    "trans","module":"path_agent","line":457}
+{"ts":"2026-02-06 23:22:52,906","level":"INFO","logger":"agent.path_agent","msg":"Successfully parsed JSON response","module":"path_agent","line":474}
+{"ts":"2026-02-06 23:22:53,263","level":"INFO","logger":"uvicorn.access","msg":"127.0.0.1:44460 - "POST /route HTTP/1.1" 200","module":"httptools_impl","line":483}

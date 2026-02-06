@@ -1,6 +1,14 @@
 import { API_BASE_URL, buildApiUrl } from '@/constants';
 import type { Message } from '@/store/useChatStore';
-import type { CoreAgentResponse, LegacyRouteResponse, RouteRequest, RouteResponse } from '@/types';
+import type {
+    ChatHistoryItem,
+    ClarificationResponse,
+    CoreAgentResponse,
+    LegacyRouteResponse,
+    RouteRequest,
+    RouteResponse,
+} from '@/types';
+import { isClarificationResponse } from '@/types';
 
 /**
  * Type guard to check if response is the new core agent format
@@ -195,16 +203,22 @@ const formatErrorMessage = (error: unknown): string => {
 export interface ChatServiceResponse {
     message: Message;
     routeData: RouteResponse | null;
+    clarification?: ClarificationResponse;
 }
 
 export const chatService = {
     /**
      * Send a route query to the backend
      */
-    sendMessage: async (text: string, mode: 'driving' | 'walking' | 'public_transport' = 'driving'): Promise<ChatServiceResponse> => {
+    sendMessage: async (
+        text: string,
+        mode: 'driving' | 'walking' | 'public_transport' = 'driving',
+        history: ChatHistoryItem[] = [],
+    ): Promise<ChatServiceResponse> => {
         const requestBody: RouteRequest = {
             query: text,
             mode,
+            history,
         };
 
         try {
@@ -225,7 +239,21 @@ export const chatService = {
                 throw new Error(errorMessage);
             }
 
-            const routeResponse: RouteResponse = await response.json();
+            const routeResponse: RouteResponse | ClarificationResponse = await response.json();
+
+            // Clarification branch
+            if (isClarificationResponse(routeResponse)) {
+                return {
+                    message: {
+                        id: Date.now().toString(),
+                        text: routeResponse.question,
+                        sender: 'bot',
+                        timestamp: Date.now(),
+                    },
+                    routeData: null,
+                    clarification: routeResponse,
+                };
+            }
 
             return {
                 message: {

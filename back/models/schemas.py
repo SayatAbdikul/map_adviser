@@ -5,6 +5,13 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class ChatMessage(BaseModel):
+    """Minimal chat history item passed from the UI."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class RouteRequest(BaseModel):
     """Request model for route planning."""
 
@@ -16,6 +23,10 @@ class RouteRequest(BaseModel):
     mode: Literal["driving", "walking", "public_transport"] = Field(
         default="driving",
         description="Transportation mode: driving (car), walking (pedestrian), or public_transport (bus, metro, tram, etc.)",
+    )
+    history: Optional[list[ChatMessage]] = Field(
+        default=None,
+        description="Optional chat history to preserve conversational context",
     )
 
 

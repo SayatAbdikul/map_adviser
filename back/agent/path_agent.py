@@ -347,6 +347,27 @@ def _build_path_agent(system_prompt: str):
     )
 
 
+def _history_to_messages(history: Optional[list[dict[str, str]]]) -> list:
+    """Convert UI history into LangChain messages."""
+    if not history:
+        return []
+    messages: list = []
+    for item in history:
+        if isinstance(item, dict):
+            role = item.get("role")
+            content = item.get("content")
+        else:
+            role = getattr(item, "role", None)
+            content = getattr(item, "content", None)
+        if not content:
+            continue
+        if role == "assistant":
+            messages.append(AIMessage(content=content))
+        else:
+            messages.append(HumanMessage(content=content))
+    return messages
+
+
 def _format_reasoning_steps(messages: list) -> list[dict[str, Any]]:
     """Convert LangGraph messages into a concise trace."""
     formatted: list[dict[str, Any]] = []
@@ -397,6 +418,7 @@ def _format_reasoning_steps(messages: list) -> list[dict[str, Any]]:
 async def plan_route(
     query: str,
     mode: Literal["driving", "walking", "public_transport"] = "driving",
+    history: Optional[list[dict[str, str]]] = None,
 ) -> dict:
     """
     Plan a route based on natural language query.
@@ -404,6 +426,7 @@ async def plan_route(
     Args:
         query: Natural language route request
         mode: Transportation mode - "driving", "walking", or "public_transport"
+        history: Optional prior chat messages to maintain context
 
     Returns:
         Route response dictionary
@@ -414,8 +437,12 @@ async def plan_route(
     user_prompt = build_path_agent_user_prompt(query, mode_instructions)
     agent = _build_path_agent(system_prompt)
 
+    # Prepare full message stack with prior turns
+    messages_input = _history_to_messages(history)
+    messages_input.append(HumanMessage(content=user_prompt))
+
     agent_result = await agent.ainvoke(
-        {"messages": [HumanMessage(content=user_prompt)]}
+        {"messages": messages_input}
     )
 
     messages = agent_result.get("messages", [])
@@ -445,6 +472,13 @@ async def plan_route(
         # Try to parse JSON
         result = json.loads(response_text)
         logger.info(f"Successfully parsed JSON response")
+
+        # If the model asks for clarification, return early without routing calls
+        if result.get("clarification_needed"):
+            if reasoning_steps:
+                result["reasoning"] = reasoning_steps
+            return result
+
         if mode != "public_transport":
             routing_client = get_routing_client()
             optimize = choose_optimization(query)

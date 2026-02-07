@@ -3,7 +3,7 @@
 from typing import Optional, List
 
 from pydantic import BaseModel
-from agents import function_tool
+from agent.tools.compat import function_tool
 
 from services.public_transport import get_public_transport_client
 

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from agents import function_tool
+from agent.tools.compat import function_tool
 
 from services.gis_places import get_places_client
 

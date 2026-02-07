@@ -1,6 +1,6 @@
 """Region tools for searching and validating geographic regions."""
 
-from agents import function_tool
+from agent.tools.compat import function_tool
 
 from services.gis_regions import get_regions_client
 

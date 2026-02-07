@@ -3,7 +3,7 @@
 import math
 from typing import Literal
 
-from agents import function_tool
+from agent.tools.compat import function_tool
 from pydantic import BaseModel
 
 from services.gis_places import get_places_client

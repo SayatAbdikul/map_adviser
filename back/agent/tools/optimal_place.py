@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from agents import function_tool
+from agent.tools.compat import function_tool
 
 from services.gis_places import get_places_client
 from services.gis_routing import get_routing_client

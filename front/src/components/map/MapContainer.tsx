@@ -11,7 +11,7 @@ import type { Route, PublicTransportMovement, CoreRoute } from '@/types';
 import { isCoreAgentResponse } from '@/types';
 import { RoomPanel, MemberMarkers } from '../room';
 
-const API_KEY = import.meta.env.VITE_2GIS_API_KEY;
+const API_KEY = window.__APP_CONFIG__?.MAP_API_KEY || import.meta.env.VITE_2GIS_API_KEY;
 const ROUTE_COLORS = ['#2563eb', '#f97316', '#16a34a'];
 const WALKING_COLOR = '#6b7280'; // Gray for walking segments
 const DEFAULT_TRANSIT_COLOR = '#3b82f6'; // Blue fallback

@@ -7,3 +7,5 @@ npm-debug.log*
 *.log
 *.tsbuildinfo
 coverage
+.env
+.env.*

@@ -3,5 +3,6 @@ __pycache__
 *.pyo
 .pytest_cache
 .env
+.env.*
 logs
 server.log

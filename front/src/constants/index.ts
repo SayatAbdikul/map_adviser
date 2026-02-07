@@ -1,6 +1,8 @@
 const normalizeBase = (base: string) => base.replace(/\/$/, '');
 
-const rawApiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+const runtimeConfig = typeof window !== 'undefined' ? window.__APP_CONFIG__ : undefined;
+
+const rawApiBase = runtimeConfig?.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || '/api';
 export const API_BASE_URL = normalizeBase(rawApiBase);
 
 export const buildApiUrl = (path: string) => {
@@ -9,7 +11,7 @@ export const buildApiUrl = (path: string) => {
 };
 
 const resolveWsBase = (): string => {
-  const explicit = import.meta.env.VITE_WS_BASE_URL;
+  const explicit = runtimeConfig?.WS_BASE_URL || import.meta.env.VITE_WS_BASE_URL;
   if (explicit) return normalizeBase(explicit);
 
   if (API_BASE_URL.startsWith('http')) {
